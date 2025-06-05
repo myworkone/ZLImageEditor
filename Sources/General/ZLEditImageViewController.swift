@@ -161,22 +161,32 @@ open class ZLEditImageViewController: UIViewController {
         layer.locations = [0, 1]
         return layer
     }()
+
+    open lazy var screenTitle: UILabel = {
+      let label = UILabel()
+      label.text = "Edit Photo"
+      label.textColor = .white
+      label.textAlignment = .center
+      let currentFontSize = label.font.pointSize
+      label.font = UIFont.boldSystemFont(ofSize: currentFontSize)
+      return label
+    }()
     
     open lazy var cancelBtn: ZLEnlargeButton = {
         let btn = ZLEnlargeButton(type: .custom)
-        btn.titleLabel?.font = ZLImageEditorLayout.bottomToolTitleFont
-        btn.setTitleColor(.white, for: .normal)
-        btn.setTitle(localLanguageTextValue(.cancel), for: .normal)
+        btn.setImage(.zl.getImage("zl_fab"), for: .normal)
+        btn.adjustsImageWhenHighlighted = false
+        btn.isEnabled = true
+        btn.enlargeInset = 8
         btn.addTarget(self, action: #selector(cancelBtnClick), for: .touchUpInside)
-        btn.enlargeInset = 30
         return btn
     }()
     
     open lazy var doneBtn: UIButton = {
         let btn = UIButton(type: .custom)
         btn.titleLabel?.font = ZLImageEditorLayout.bottomToolTitleFont
-        btn.backgroundColor = .zl.editDoneBtnBgColor
-        btn.setTitle("test", for: .normal)
+        // btn.backgroundColor = .zl.editDoneBtnBgColor
+        btn.setTitle(localLanguageTextValue(.editFinish), for: .normal)
         btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         btn.addTarget(self, action: #selector(doneBtnClick), for: .touchUpInside)
         btn.layer.masksToBounds = true
@@ -548,15 +558,32 @@ open class ZLEditImageViewController: UIViewController {
         bottomShadowView.frame = CGRect(x: 0, y: view.zl.height - 150 - insets.bottom, width: view.zl.width, height: 150 + insets.bottom)
         bottomShadowLayer.frame = bottomShadowView.bounds
         
-        let cancelBtnW = localLanguageTextValue(.cancel)
+        let undoBtnW = localLanguageTextValue(.cancel)
             .zl.boundingRect(
                 font: ZLImageEditorLayout.bottomToolTitleFont,
                 limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: 28)
             ).width
-        cancelBtn.frame = CGRect(x: 20, y: insets.top, width: cancelBtnW, height: 30)
-        redoBtn.frame = CGRect(x: view.zl.width - 15 - 30, y: insets.top, width: 30, height: 30)
-        undoBtn.frame = CGRect(x: redoBtn.zl.left - 15 - 30, y: insets.top, width: 30, height: 30)
+        undoBtn.frame = CGRect(x: 20, y: insets.top, width: undoBtnW, height: 30)
+        // cancelBtn.frame = CGRect(x: 20, y: insets.top, width: cancelBtnW, height: 30)
+        let doneBtnH = ZLImageEditorLayout.bottomToolBtnH
+        let doneBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: doneBtnH)).width + 20
+        doneBtn.frame = CGRect(x: view.zl.width - 15 - doneBtnW, y: insets.top, width: doneBtnW, height: doneBtnH)
+        // redoBtn.frame = CGRect(x: view.zl.width - 15 - 30, y: insets.top, width: 30, height: 30)
+        // undoBtn.frame = CGRect(x: redoBtn.zl.left - 15 - 30, y: insets.top, width: 30, height: 30)
+
+        let leftPaddingForTitle: CGFloat = 10  // Space after undoBtn
+        let rightPaddingForTitle: CGFloat = 10 // Space before 
         
+        // X coordinate for the title's frame
+        let titleX = undoBtn.frame.maxX + leftPaddingForTitle
+
+        // Calculate available width for the title
+        let availableWidthForTitle = doneBtn.frame.minX - rightPaddingForTitle - titleX
+
+        // Ensure the width is not negative (can happen if buttons are too wide or padding too large)
+        let titleWidth = max(0, availableWidthForTitle)
+
+         screenTitle.frame = CGRect( x: titleX, y: 10, width: titleWidth, height: 150 )
         eraserBtn.frame = CGRect(x: 20, y: 30 + (drawColViewH - 36) / 2, width: 36, height: 36)
         eraserBtnBgBlurView.frame = eraserBtn.frame
         eraserLineView.frame = CGRect(x: eraserBtn.zl.right + 11, y: eraserBtn.frame.midY - 10, width: 1, height: 20)
@@ -591,13 +618,13 @@ open class ZLEditImageViewController: UIViewController {
             height: 25
         )
         
-        let toolY: CGFloat = 95
+        let toolY: CGFloat = 70
         
-        let doneBtnH = ZLImageEditorLayout.bottomToolBtnH
-        let doneBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: doneBtnH)).width + 20
-        doneBtn.frame = CGRect(x: view.zl.width - 20 - doneBtnW, y: toolY - 2, width: doneBtnW, height: doneBtnH)
+        let cancelBtnH = ZLImageEditorLayout.bottomToolBtnH
+        let cancelBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: cancelBtnH)).width + 20
+        cancelBtn.frame = CGRect(x: view.zl.width - 20 - doneBtnW, y: toolY, width: doneBtnW, height: doneBtnH)
         
-        editToolCollectionView.frame = CGRect(x: 20, y: toolY, width: view.zl.width - 20 - 20 - doneBtnW - 20, height: 30)
+        editToolCollectionView.frame = CGRect(x: 20, y: toolY, width: view.zl.width - cancelBtnW, height: 50)
         
         if !drawPaths.isEmpty {
             drawLine()
@@ -696,14 +723,18 @@ open class ZLEditImageViewController: UIViewController {
         
         view.addSubview(topShadowView)
         topShadowView.layer.addSublayer(topShadowLayer)
-        topShadowView.addSubview(cancelBtn)
+        topShadowView.addSubview(doneBtn)
+        // topShadowView.addSubview(doneBtn)
+        // topShadowView.addSubview(cancelBtn)
         topShadowView.addSubview(undoBtn)
-        topShadowView.addSubview(redoBtn)
+        topShadowView.addSubview(screenTitle)
+        // topShadowView.addSubview(redoBtn)
         
         view.addSubview(bottomShadowView)
         bottomShadowView.layer.addSublayer(bottomShadowLayer)
         bottomShadowView.addSubview(editToolCollectionView)
-        bottomShadowView.addSubview(doneBtn)
+        bottomShadowView.addSubview(cancelBtn)
+        // bottomShadowView.addSubview(doneBtn)
         
         if tools.contains(.draw) {
             bottomShadowView.addSubview(eraserBtnBgBlurView)

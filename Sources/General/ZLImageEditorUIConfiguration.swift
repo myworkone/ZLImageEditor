@@ -107,10 +107,10 @@ public class ZLImageEditorUIConfiguration: NSObject {
     @objc public var adjustSliderNormalColor = UIColor.white
     
     /// The tint color of adjust slider.
-    @objc public var adjustSliderTintColor: UIColor = .zl.rgba(7, 213, 101)
+    @objc public var adjustSliderTintColor: UIColor = .zl.rgba(242, 200, 76)
     
     /// The background color of edit done button.
-    @objc public var editDoneBtnBgColor: UIColor = .zl.rgba(7, 213, 101)
+    @objc public var editDoneBtnBgColor: UIColor = .zl.rgba(242, 200, 76)
     
     /// The title color of edit done button.
     @objc public var editDoneBtnTitleColor = UIColor.white
