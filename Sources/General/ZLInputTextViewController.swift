@@ -68,7 +68,7 @@ class ZLInputTextViewController: UIViewController {
         let btn = UIButton(type: .custom)
         btn.setTitle(localLanguageTextValue(.done), for: .normal)
         btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
-        btn.backgroundColor = .zl.editDoneBtnBgColor
+        // btn.backgroundColor = .zl.editDoneBtnBgColor
         btn.titleLabel?.font = ZLImageEditorLayout.bottomToolTitleFont
         btn.addTarget(self, action: #selector(doneBtnClick), for: .touchUpInside)
         btn.layer.masksToBounds = true
