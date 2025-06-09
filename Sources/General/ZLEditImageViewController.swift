@@ -219,9 +219,11 @@ open class ZLEditImageViewController: UIViewController {
     open lazy var editToolCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.itemSize = CGSize(width: 30, height: 30)
-        layout.minimumLineSpacing = 20
-        layout.minimumInteritemSpacing = 20
+        layout.minimumLineSpacing = 40
+        layout.minimumInteritemSpacing = 40
         layout.scrollDirection = .horizontal
+
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 0)
         
         let view = UICollectionView(frame: .zero, collectionViewLayout: layout)
         view.backgroundColor = .clear
