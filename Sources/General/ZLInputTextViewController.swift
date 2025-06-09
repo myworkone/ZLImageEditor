@@ -211,12 +211,12 @@ class ZLInputTextViewController: UIViewController {
         
         textView.frame = CGRect(x: 10, y: doneBtn.zl.bottom + 30, width: view.zl.width - 20, height: 200)
         
-        textStyleBtn.frame = CGRect(
-            x: 12,
-            y: 0,
-            width: 50,
-            height: Self.toolViewHeight
-        )
+        // textStyleBtn.frame = CGRect(
+        //     x: 12,
+        //     y: 0,
+        //     width: 50,
+        //     height: Self.toolViewHeight
+        // )
         collectionView.frame = CGRect(
             x: textStyleBtn.zl.right + 5,
             y: 0,
@@ -244,7 +244,7 @@ class ZLInputTextViewController: UIViewController {
         view.addSubview(doneBtn)
         view.addSubview(textView)
         view.addSubview(toolView)
-        toolView.addSubview(textStyleBtn)
+        // toolView.addSubview(textStyleBtn)
         toolView.addSubview(collectionView)
         
         textView.textAlignment = .left

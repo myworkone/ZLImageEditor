@@ -583,11 +583,11 @@ open class ZLEditImageViewController: UIViewController {
         // Ensure the width is not negative (can happen if buttons are too wide or padding too large)
         let titleWidth = max(0, availableWidthForTitle)
 
-         screenTitle.frame = CGRect( x: titleX, y: 10, width: titleWidth, height: 150 )
-        eraserBtn.frame = CGRect(x: 20, y: 30 + (drawColViewH - 36) / 2, width: 36, height: 36)
-        eraserBtnBgBlurView.frame = eraserBtn.frame
-        eraserLineView.frame = CGRect(x: eraserBtn.zl.right + 11, y: eraserBtn.frame.midY - 10, width: 1, height: 20)
-        drawColorCollectionView?.frame = CGRect(x: eraserLineView.zl.right + 11, y: 30, width: view.zl.width - eraserLineView.zl.right - 31, height: drawColViewH)
+        screenTitle.frame = CGRect( x: titleX, y: 10, width: titleWidth, height: 150 )
+        // eraserBtn.frame = CGRect(x: 20, y: 30 + (drawColViewH - 36) / 2, width: 36, height: 36)
+        // eraserBtnBgBlurView.frame = eraserBtn.frame
+        // eraserLineView.frame = CGRect(x: eraserBtn.zl.right + 11, y: eraserBtn.frame.midY - 10, width: 1, height: 20)
+        drawColorCollectionView?.frame = CGRect(x: eraserLineView.zl.right + 11, y: 15, width: view.zl.width - eraserLineView.zl.right - 31, height: drawColViewH)
         
         adjustCollectionView?.frame = CGRect(x: 20, y: 20, width: view.zl.width - 40, height: adjustColViewH)
         if ZLImageEditorUIConfiguration.default().adjustSliderType == .vertical {
@@ -737,10 +737,10 @@ open class ZLEditImageViewController: UIViewController {
         // bottomShadowView.addSubview(doneBtn)
         
         if tools.contains(.draw) {
-            bottomShadowView.addSubview(eraserBtnBgBlurView)
-            bottomShadowView.addSubview(eraserBtn)
-            bottomShadowView.addSubview(eraserLineView)
-            containerView.addSubview(eraserCircleView)
+            // bottomShadowView.addSubview(eraserBtnBgBlurView)
+            // bottomShadowView.addSubview(eraserBtn)
+            // bottomShadowView.addSubview(eraserLineView)
+            // containerView.addSubview(eraserCircleView)
             
             impactFeedback = UIImpactFeedbackGenerator(style: .light)
 
