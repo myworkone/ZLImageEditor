@@ -88,6 +88,12 @@ public extension ZLImageEditorConfiguration {
     }
 
     @discardableResult
+    func shapeStickerContainerView(_ view: (UIView & ZLShapeStickerContainerDelegate)?) -> ZLImageEditorConfiguration {
+        shapeStickerContainerView = view
+        return self
+    }
+
+    @discardableResult
     func fontChooserContainerView(_ view: (UIView & ZLTextFontChooserDelegate)?) -> ZLImageEditorConfiguration {
         fontChooserContainerView = view
         return self

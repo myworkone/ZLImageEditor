@@ -51,14 +51,14 @@ public class ZLImageEditorConfiguration: NSObject {
         ZLImageEditorConfiguration.single = ZLImageEditorConfiguration()
     }
     
-    private var pri_tools: [ZLImageEditorConfiguration.EditTool] = [.draw, .clip, .imageSticker, .textSticker, .mosaic, .filter, .adjust]
+    private var pri_tools: [ZLImageEditorConfiguration.EditTool] = [.draw, .clip, .imageSticker, .shapeSticker, .textSticker, .mosaic, .filter, .adjust]
     /// Edit image tools. (Default order is draw, clip, imageSticker, textSticker, mosaic, filtter)
     /// Because Objective-C Array can't contain Enum styles, so this property is not available in Objective-C.
     /// - warning: If you want to use the image sticker feature, you must provide a view that implements ZLImageStickerContainerDelegate.
     public var tools: [ZLImageEditorConfiguration.EditTool] {
         get {
             if pri_tools.isEmpty {
-                return [.draw, .clip, .imageSticker, .textSticker, .mosaic, .filter, .adjust]
+                return [.draw, .clip, .imageSticker, .shapeSticker, .textSticker, .mosaic, .filter, .adjust]
             } else {
                 return pri_tools
             }
@@ -143,6 +143,8 @@ public class ZLImageEditorConfiguration: NSObject {
     
     @objc public var imageStickerContainerView: (UIView & ZLImageStickerContainerDelegate)?
 
+    public var shapeStickerContainerView: (UIView & ZLShapeStickerContainerDelegate)?
+
     @objc public var fontChooserContainerView: (UIView & ZLTextFontChooserDelegate)?
 
     private var pri_adjustTools: [ZLImageEditorConfiguration.AdjustTool] = [.brightness, .contrast, .saturation]
@@ -198,6 +200,7 @@ public extension ZLImageEditorConfiguration {
         case draw
         case clip
         case imageSticker
+        case shapeSticker
         case textSticker
         case mosaic
         case filter
@@ -312,6 +315,16 @@ public extension ZLImageClipRatio {
     @objc var hideBlock: (() -> Void)? { get set }
     
     @objc func show(in view: UIView)
+}
+
+/// Provide an image sticker container view that conform to this protocol must be a subclass of UIView
+public protocol ZLShapeStickerContainerDelegate {
+    // Now these do not need @objc and will compile correctly.
+    var selectShapeBlock: ((ZLShapeType) -> Void)? { get set }
+    var hideBlock: (() -> Void)? { get set }
+    
+    // You can still have @objc on individual methods if needed, but it's not required here.
+    func show(in view: UIView)
 }
 
 /// Provide an text font choose view that conform to this protocol must be a subclass of UIView

@@ -26,6 +26,19 @@
 
 import UIKit
 
+// Define the available shape types
+public enum ZLShapeType: String, CaseIterable {
+    case arrow
+    case rectangle
+    case circle
+    case triangle
+    case star
+    // case thumbsUp
+    // case thumbsDown
+    case warning
+    // case search
+}
+
 public class ZLBaseStickertState: NSObject {
     let id: String
     let image: UIImage
@@ -59,6 +72,38 @@ public class ZLBaseStickertState: NSObject {
 }
 
 public class ZLImageStickerState: ZLBaseStickertState { }
+
+// Modified ZLShapeStickerState to include shape type and color
+public class ZLShapeStickerState: ZLBaseStickertState {
+    let shapeType: ZLShapeType
+    let shapeColor: UIColor
+    
+    public init(
+        id: String,
+        shapeType: ZLShapeType,
+        shapeColor: UIColor,
+        image: UIImage,
+        originScale: CGFloat,
+        originAngle: CGFloat,
+        originFrame: CGRect,
+        gesScale: CGFloat,
+        gesRotation: CGFloat,
+        totalTranslationPoint: CGPoint
+    ) {
+        self.shapeType = shapeType
+        self.shapeColor = shapeColor
+        super.init(
+            id: id,
+            image: image,
+            originScale: originScale,
+            originAngle: originAngle,
+            originFrame: originFrame,
+            gesScale: gesScale,
+            gesRotation: gesRotation,
+            totalTranslationPoint: totalTranslationPoint
+        )
+    }
+}
 
 public class ZLTextStickerState: ZLBaseStickertState {
     let text: String

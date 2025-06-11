@@ -16,6 +16,8 @@ class ViewController: UIViewController {
     var editImageClipToolSwitch: UISwitch!
     
     var editImageImageStickerToolSwitch: UISwitch!
+
+    var editShapeImageStickerToolSwitch: UISwitch!
     
     var editImageTextStickerToolSwitch: UISwitch!
     
@@ -159,6 +161,22 @@ class ViewController: UIViewController {
             make.left.equalTo(filterToolLabel.snp.right).offset(spacing)
             make.centerY.equalTo(filterToolLabel)
         }
+
+        let shapeStickerToolLabel = createLabel("Shape sticker")
+        editImageToolView.addSubview(shapeStickerToolLabel)
+        shapeStickerToolLabel.snp.makeConstraints { make in
+            make.top.equalTo(filterToolLabel.snp.bottom).offset(spacing)
+            make.left.equalTo(self.editImageToolView.snp.centerX)
+        }
+        
+        editShapeImageStickerToolSwitch = UISwitch()
+        editShapeImageStickerToolSwitch.isOn = config.tools.contains(.shapeSticker)
+        editShapeImageStickerToolSwitch.addTarget(self, action: #selector(shapeStickerToolChanged), for: .valueChanged)
+        editImageToolView.addSubview(editShapeImageStickerToolSwitch)
+        editShapeImageStickerToolSwitch.snp.makeConstraints { make in
+            make.left.equalTo(shapeStickerToolLabel.snp.right).offset(spacing)
+            make.centerY.equalTo(shapeStickerToolLabel)
+        }
         
         let adjustToolLabel = createLabel("Adjust")
         editImageToolView.addSubview(adjustToolLabel)
@@ -219,6 +237,7 @@ class ViewController: UIViewController {
 //            )
         
         ZLImageEditorConfiguration.default()
+            .shapeStickerContainerView(ShapeStickerContainerView())
             // Provide a image sticker container view
             .imageStickerContainerView(ImageStickerContainerView())
             .fontChooserContainerView(FontChooserContainerView())
@@ -256,6 +275,14 @@ class ViewController: UIViewController {
             config.tools.removeAll { $0 == .imageSticker }
         } else {
             config.tools.append(.imageSticker)
+        }
+    }
+
+    @objc func shapeStickerToolChanged() {
+        if config.tools.contains(.shapeSticker) {
+            config.tools.removeAll { $0 == .shapeSticker }
+        } else {
+            config.tools.append(.shapeSticker)
         }
     }
     

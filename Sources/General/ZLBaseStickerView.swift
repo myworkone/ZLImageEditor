@@ -52,7 +52,7 @@ protocol ZLStickerViewAdditional: NSObject {
     func addScale(_ scale: CGFloat)
 }
 
-class ZLBaseStickerView: UIView, UIGestureRecognizerDelegate {
+public class ZLBaseStickerView: UIView, UIGestureRecognizerDelegate {
     private enum Direction: Int {
         case up = 0
         case right = 90
@@ -123,6 +123,8 @@ class ZLBaseStickerView: UIView, UIGestureRecognizerDelegate {
             return ZLTextStickerView(state: state)
         } else if let state = state as? ZLImageStickerState {
             return ZLImageStickerView(state: state)
+        } else if let state = state as? ZLShapeStickerState {
+            return ZLShapeStickerView(state: state)
         } else {
             return nil
         }
@@ -171,7 +173,7 @@ class ZLBaseStickerView: UIView, UIGestureRecognizerDelegate {
         fatalError("init(coder:) has not been implemented")
     }
     
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         
         guard firstLayout else {
@@ -348,7 +350,7 @@ class ZLBaseStickerView: UIView, UIGestureRecognizerDelegate {
     
     // MARK: UIGestureRecognizerDelegate
 
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
 }
@@ -412,3 +414,203 @@ extension ZLBaseStickerView: ZLStickerViewAdditional {
         maxGesScale *= scale
     }
 }
+
+
+// todo: check if we need this
+// // MARK: - ZLImageStickerView
+// // Added for completeness
+// class ZLImageStickerView: ZLBaseStickerView {
+//     let imageView: UIImageView
+    
+//     override var state: ZLBaseStickertState {
+//         return ZLImageStickerState(
+//             id: id,
+//             image: imageView.image!,
+//             originScale: originScale,
+//             originAngle: originAngle,
+//             originFrame: originFrame,
+//             gesScale: gesScale,
+//             gesRotation: gesRotation,
+//             totalTranslationPoint: totalTranslationPoint
+//         )
+//     }
+    
+//     init(image: UIImage,
+//          originScale: CGFloat,
+//          originAngle: CGFloat,
+//          originFrame: CGRect) {
+//         self.imageView = UIImageView(image: image)
+//         self.imageView.contentMode = .scaleAspectFit
+//         super.init(originScale: originScale, originAngle: originAngle, originFrame: originFrame, showBorder: true)
+//         addSubview(imageView)
+//     }
+
+//     init(state: ZLImageStickerState) {
+//         self.imageView = UIImageView(image: state.image)
+//         self.imageView.contentMode = .scaleAspectFit
+//         super.init(
+//             id: state.id,
+//             originScale: state.originScale,
+//             originAngle: state.originAngle,
+//             originFrame: state.originFrame,
+//             gesScale: state.gesScale,
+//             gesRotation: state.gesRotation,
+//             totalTranslationPoint: state.totalTranslationPoint
+//         )
+//         addSubview(imageView)
+//     }
+    
+//     required init?(coder: NSCoder) {
+//         fatalError("init(coder:) has not be en implemented")
+//     }
+
+//     override func setupUIFrameWhenFirstLayout() {
+//         super.setupUIFrameWhenFirstLayout()
+//         imageView.frame = bounds
+//     }
+
+//     class func calculateSize(image: UIImage, width: CGFloat) -> CGSize {
+//         let imageW = image.size.width
+//         let imageH = image.size.height
+        
+//         let w = min(width / 3, imageW)
+//         let h = w * imageH / imageW
+        
+//         return CGSize(width: w, height: h)
+//     }
+// }
+
+
+// // MARK: - ZLShapeStickerView
+// // The new class for rendering shapes
+// class ZLShapeStickerView: ZLBaseStickerView {
+
+//     let shapeType: ZLShapeType
+//     var shapeColor: UIColor {
+//         didSet {
+//             if oldValue != shapeColor {
+//                 updateImage()
+//             }
+//         }
+//     }
+
+//     private let imageView: UIImageView
+
+//     override var state: ZLBaseStickertState {
+//         return ZLShapeStickerState(
+//             id: id,
+//             shapeType: shapeType,
+//             shapeColor: shapeColor,
+//             image: imageView.image!,
+//             originScale: originScale,
+//             originAngle: originAngle,
+//             originFrame: originFrame,
+//             gesScale: gesScale,
+//             gesRotation: gesRotation,
+//             totalTranslationPoint: totalTranslationPoint
+//         )
+//     }
+
+//     init(shapeType: ZLShapeType,
+//          shapeColor: UIColor,
+//          originScale: CGFloat,
+//          originAngle: CGFloat,
+//          originFrame: CGRect) {
+        
+//         self.shapeType = shapeType
+//         self.shapeColor = shapeColor
+//         self.imageView = UIImageView()
+//         self.imageView.contentMode = .scaleAspectFit
+        
+//         super.init(
+//             originScale: originScale,
+//             originAngle: originAngle,
+//             originFrame: originFrame,
+//             showBorder: true
+//         )
+        
+//         addSubview(imageView)
+//         updateImage()
+//     }
+
+//     init(state: ZLShapeStickerState) {
+//         self.shapeType = state.shapeType
+//         self.shapeColor = state.shapeColor
+//         self.imageView = UIImageView()
+//         self.imageView.contentMode = .scaleAspectFit
+        
+//         super.init(
+//             id: state.id,
+//             originScale: state.originScale,
+//             originAngle: state.originAngle,
+//             originFrame: state.originFrame,
+//             gesScale: state.gesScale,
+//             gesRotation: state.gesRotation,
+//             totalTranslationPoint: state.totalTranslationPoint
+//         )
+        
+//         addSubview(imageView)
+//         // The image in the state is already tinted, so we can just use it.
+//         imageView.image = state.image
+//     }
+    
+//     required init?(coder: NSCoder) {
+//         fatalError("init(coder:) has not been implemented")
+//     }
+    
+//     override func setupUIFrameWhenFirstLayout() {
+//         super.setupUIFrameWhenFirstLayout()
+//         imageView.frame = bounds
+//     }
+
+//     private func updateImage() {
+//         let template = ZLShapeStickerView.templateImage(for: shapeType, size: self.bounds.size)
+//         self.image = template.withTintColor(self.shapeColor)
+//     }
+    
+//     // Generate a template image (in white) for a given shape
+//     static func templateImage(for shapeType: ZLShapeType, size: CGSize) -> UIImage {
+//         let imageSize = size.width > 0 ? size : CGSize(width: 100, height: 100)
+//         return UIGraphicsImageRenderer(size: imageSize).image { ctx in
+//             let rect = CGRect(origin: .zero, size: imageSize).insetBy(dx: 5, dy: 5)
+            
+//             UIColor.white.set()
+            
+//             switch shapeType {
+//             case .rectangle:
+//                 let path = UIBezierPath(rect: rect)
+//                 path.fill()
+//             case .circle:
+//                 let path = UIBezierPath(ovalIn: rect)
+//                 path.fill()
+//             case .line:
+//                 let path = UIBezierPath()
+//                 path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+//                 path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+//                 path.lineWidth = 8
+//                 path.lineCapStyle = .round
+//                 path.stroke()
+//             case .arrow:
+//                 // Line part
+//                 let path = UIBezierPath()
+//                 path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+//                 path.addLine(to: CGPoint(x: rect.maxX - 10, y: rect.midY))
+//                 path.lineWidth = 8
+//                 path.lineCapStyle = .round
+//                 path.stroke()
+                
+//                 // Arrow head part
+//                 let head = UIBezierPath()
+//                 head.move(to: CGPoint(x: rect.maxX, y: rect.midY))
+//                 head.addLine(to: CGPoint(x: rect.maxX - 18, y: rect.midY - 12))
+//                 head.addLine(to: CGPoint(x: rect.maxX - 18, y: rect.midY + 12))
+//                 head.close()
+//                 head.fill()
+//             }
+//         }.withRenderingMode(.alwaysTemplate)
+//     }
+    
+//     class func calculateSize(width: CGFloat) -> CGSize {
+//         return CGSize(width: 120, height: 120)
+//     }
+// }

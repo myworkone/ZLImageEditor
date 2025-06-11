@@ -42,7 +42,7 @@ ZLImageEditor is extracted from [ZLPhotoBrowser](https://github.com/longitachi/Z
 ### <a id="Usage"></a>Usage
 ```swift
 ZLImageEditorConfiguration.default()
-    .editImageTools([.draw, .clip, .imageSticker, .textSticker, .mosaic, .filter, .adjust])
+    .editImageTools([.draw, .clip, .imageSticker, .shapeSticker, .textSticker, .mosaic, .filter, .adjust])
     .adjustTools([.brightness, .contrast, .saturation])
 
 ZLEditImageViewController.showEditImageVC(parentVC: self, image: image, editModel: editModel) { [weak self] (resImage, editModel) in

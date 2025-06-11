@@ -322,7 +322,7 @@ open class ZLEditImageViewController: UIViewController {
     // The mask layer of mosaicImageLayer
     var mosaicImageLayerMaskLayer: CAShapeLayer?
     
-    var selectedTool: ZLImageEditorConfiguration.EditTool?
+    // var selectedTool: ZLImageEditorConfiguration.EditTool?
     
     var selectedAdjustTool: ZLImageEditorConfiguration.AdjustTool?
     
@@ -353,7 +353,21 @@ open class ZLEditImageViewController: UIViewController {
     
     var imageStickerContainerIsHidden = true
 
+    var shapeStickerContainerIsHidden = true
+
     var fontChooserContainerIsHidden = true
+
+    var selectedTool: ZLImageEditorConfiguration.EditTool? {
+        didSet {
+            // When tool changes, deselect any shape sticker
+            if oldValue != selectedTool {
+                deselectShapeSticker()
+            }
+        }
+    }
+    
+    // Add property to track the selected shape sticker for color changing
+    var selectedShapeSticker: ZLShapeStickerView?
     
     private var currentClipStatus: ZLClipStatus
 
@@ -481,9 +495,14 @@ open class ZLEditImageViewController: UIViewController {
         preAdjustStatus = currentAdjustStatus
         
         var ts = ZLImageEditorConfiguration.default().tools
+        // todo: check how to add shapeStiker here
         if ts.contains(.imageSticker), ZLImageEditorConfiguration.default().imageStickerContainerView == nil {
             ts.removeAll { $0 == .imageSticker }
         }
+
+        //  if ts.contains(.shapeSticker), ZLImageEditorConfiguration.default().imageStickerContainerView == nil {
+        //      ts.removeAll { $0 == .shapeSticker } 
+        //  }
         tools = ts
         adjustTools = ZLImageEditorConfiguration.default().adjustTools
         selectedAdjustTool = adjustTools.first
@@ -879,6 +898,19 @@ open class ZLEditImageViewController: UIViewController {
             }
         }
 
+        if tools.contains(.shapeSticker) {
+            ZLImageEditorConfiguration.default().shapeStickerContainerView?.hideBlock = { [weak self] in
+                self?.setToolView(show: true)
+                self?.shapeStickerContainerIsHidden = true
+            }
+            
+            // This is the callback from the shape picker.
+            // It now provides a shapeType instead of an image.
+            ZLImageEditorConfiguration.default().shapeStickerContainerView?.selectShapeBlock = { [weak self] shapeType in
+                self?.addShapeStickerView(shapeType: shapeType)
+            }
+        }
+
         if tools.contains(.textSticker) {
             ZLImageEditorConfiguration.default().fontChooserContainerView?.hideBlock = { [weak self] in
                 self?.setToolView(show: true)
@@ -927,8 +959,13 @@ open class ZLEditImageViewController: UIViewController {
             self.cancelBlock?()
         }
     }
+
+    // TODO: Add deselectShapeSticker() to all other tool selection methods as well...
+    // e.g., clipBtnClick, imageStickerBtnClick, etc.
+    // This ensures the shape color picker is hidden when another tool is chosen. 
     
     func drawBtnClick() {
+        deselectShapeSticker()
         let isSelected = selectedTool != .draw
         if isSelected {
             selectedTool = .draw
@@ -1017,6 +1054,17 @@ open class ZLEditImageViewController: UIViewController {
         ZLImageEditorConfiguration.default().imageStickerContainerView?.show(in: view)
         setToolView(show: false)
         imageStickerContainerIsHidden = false
+        
+        selectedTool = nil
+        setDrawViews(hidden: true)
+        setFilterViews(hidden: true)
+        setAdjustViews(hidden: true)
+    }
+
+    func shapeStickerBtnClick() {
+        ZLImageEditorConfiguration.default().shapeStickerContainerView?.show(in: view)
+        setToolView(show: false)
+        shapeStickerContainerIsHidden = false
         
         selectedTool = nil
         setDrawViews(hidden: true)
@@ -1183,7 +1231,26 @@ open class ZLEditImageViewController: UIViewController {
         editorManager.redoAction()
     }
     
-    @objc func tapAction(_ tap: UITapGestureRecognizer) {
+  @objc func tapAction(_ tap: UITapGestureRecognizer) {
+        let p = tap.location(in: view)
+        var tappedOnSticker = false
+        
+        // Check if the tap occurred on any sticker to prevent deselection.
+        for sticker in stickersContainer.subviews {
+            let stickerFrameInView = sticker.superview!.convert(sticker.frame, to: view)
+            if stickerFrameInView.contains(p) {
+                tappedOnSticker = true
+                break
+            }
+        }
+
+        if !tappedOnSticker {
+            // If the tap was on the background, deselect any active sticker.
+            deselectShapeSticker()
+            stickersContainer.subviews.forEach { ($0 as? ZLStickerViewAdditional)?.resetState() }
+        }
+        
+        // Toggle the visibility of the top/bottom toolbars.
         if bottomShadowView.alpha == 1 {
             setToolView(show: false)
         } else {
@@ -1500,6 +1567,71 @@ open class ZLEditImageViewController: UIViewController {
         
         editorManager.storeAction(.sticker(oldState: nil, newState: imageSticker.state))
     }
+
+    /// Add shape sticker
+    /// Add shape sticker (for shapes)
+func addShapeStickerView(shapeType: ZLShapeType) {
+    let scale = mainScrollView.zoomScale
+    let size = ZLShapeStickerView.calculateSize(width: view.frame.width)
+    let originFrame = getStickerOriginFrame(size)
+    
+    // Create the ZLShapeStickerView with the shapeType, not an image.
+    let shapeSticker = ZLShapeStickerView(
+        shapeType: shapeType,
+//      shapeColor: self.currentDrawColor, // Use a default color
+        shapeColor: .white,
+        originScale: 1 / scale,
+        originAngle: -currentClipStatus.angle,
+        originFrame: originFrame
+    )
+    
+    addSticker(shapeSticker)
+    // Immediately select the new sticker to allow color changes
+    stickerDidTap(shapeSticker)
+    
+    editorManager.storeAction(.sticker(oldState: nil, newState: shapeSticker.state))
+}
+    /// Shows the color picker UI specifically for a selected shape.
+    private func showShapeColorPicker() {
+        // Hide other tool views to avoid UI clutter.
+        setFilterViews(hidden: true)
+        setAdjustViews(hidden: true)
+        
+        // Show the color collection view, but hide the draw-specific tools (eraser).
+        eraserBtn.isHidden = true
+        eraserBtnBgBlurView.isHidden = true
+        eraserLineView.isHidden = true
+        drawColorCollectionView?.isHidden = false
+        
+        // Make the color picker take up the full available width in the bottom bar.
+        drawColorCollectionView?.frame = CGRect(x: 20, y: 15, width: view.zl.width - 40, height: drawColViewH)
+        
+        drawColorCollectionView?.reloadData()
+        // Scroll to the currently selected color.
+        if let color = selectedShapeSticker?.shapeColor, let index = drawColors.firstIndex(of: color) {
+            let indexPath = IndexPath(item: index, section: 0)
+            drawColorCollectionView?.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
+        }
+    }
+
+    // Deselect shape sticker and hide its specific UI
+    private func deselectShapeSticker() {
+        guard self.selectedShapeSticker != nil else { return }
+        
+        self.selectedShapeSticker = nil
+        
+        // If the main tool is 'Draw', revert to the full draw UI.
+        // Otherwise, hide the color picker completely.
+        if selectedTool == .draw {
+            setDrawViews(hidden: false)
+            // Restore original frame for the color collection view next to the eraser.
+            eraserLineView.frame = CGRect(x: eraserBtn.zl.right + 11, y: eraserBtn.frame.midY - 10, width: 1, height: 20)
+            drawColorCollectionView?.frame = CGRect(x: eraserLineView.zl.right + 11, y: 15, width: view.zl.width - eraserLineView.zl.right - 31, height: drawColViewH)
+            drawColorCollectionView?.reloadData()
+        } else {
+            setDrawViews(hidden: true)
+        }
+    }
     
     /// Add text sticker
     func addTextStickersView(_ text: String, textColor: UIColor, font: UIFont, image: UIImage?, style: ZLInputTextStyle) {
@@ -1753,7 +1885,7 @@ open class ZLEditImageViewController: UIViewController {
 
 extension ZLEditImageViewController: UIGestureRecognizerDelegate {
     public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        guard imageStickerContainerIsHidden, fontChooserContainerIsHidden else {
+        guard imageStickerContainerIsHidden, fontChooserContainerIsHidden, shapeStickerContainerIsHidden else {
             return false
         }
         if gestureRecognizer is UITapGestureRecognizer {
@@ -1830,114 +1962,154 @@ extension ZLEditImageViewController: UIScrollViewDelegate {
 
 extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        if collectionView == editToolCollectionView {
-            return tools.count
-        } else if collectionView == drawColorCollectionView {
-            return drawColors.count
-        } else if collectionView == filterCollectionView {
-            return thumbnailFilterImages.count
-        } else {
-            return adjustTools.count
-        }
-    }
+         if collectionView == editToolCollectionView {
+             return tools.count
+         } else if collectionView == drawColorCollectionView {
+             return drawColors.count
+         } else if collectionView == filterCollectionView {
+             return thumbnailFilterImages.count
+         } else { // adjustCollectionView
+             return adjustTools.count
+         }
+     }
     
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        if collectionView == editToolCollectionView {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLEditToolCell.zl.identifier, for: indexPath) as! ZLEditToolCell
-            
-            let toolType = tools[indexPath.row]
-            cell.icon.isHighlighted = false
-            cell.toolType = toolType
-            cell.icon.isHighlighted = toolType == selectedTool
-            
-            return cell
-        } else if collectionView == drawColorCollectionView {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLDrawColorCell.zl.identifier, for: indexPath) as! ZLDrawColorCell
-            
-            let c = drawColors[indexPath.row]
-            cell.color = c
-            if c == currentDrawColor, !eraserBtn.isSelected {
-                cell.bgWhiteView.layer.transform = CATransform3DMakeScale(1.2, 1.2, 1)
-            } else {
-                cell.bgWhiteView.layer.transform = CATransform3DIdentity
+            if collectionView == editToolCollectionView {
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLEditToolCell.zl.identifier, for: indexPath) as! ZLEditToolCell
+                
+                let toolType = tools[indexPath.row]
+                cell.icon.isHighlighted = false
+                cell.toolType = toolType
+                cell.icon.isHighlighted = toolType == selectedTool
+                
+                return cell
+            } else if collectionView == drawColorCollectionView {
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLDrawColorCell.zl.identifier, for: indexPath) as! ZLDrawColorCell
+                
+                let color = drawColors[indexPath.row]
+                cell.color = color
+                
+                var isSelected = false
+                // Check if we are coloring a shape OR using the draw tool.
+                if let shapeSticker = selectedShapeSticker {
+                    isSelected = (color == shapeSticker.shapeColor)
+                } else {
+                    isSelected = (color == currentDrawColor && !eraserBtn.isSelected)
+                }
+                
+                // Apply a scale transform to the selected color cell.
+                if isSelected {
+                    cell.bgWhiteView.layer.transform = CATransform3DMakeScale(1.2, 1.2, 1)
+                } else {
+                    cell.bgWhiteView.layer.transform = CATransform3DIdentity
+                }
+                
+                return cell
+            } else if collectionView == filterCollectionView {
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLFilterImageCell.zl.identifier, for: indexPath) as! ZLFilterImageCell
+                
+                let image = thumbnailFilterImages[indexPath.row]
+                let filter = ZLImageEditorConfiguration.default().filters[indexPath.row]
+                
+                cell.nameLabel.text = filter.name
+                cell.imageView.image = image
+                
+                if currentFilter === filter {
+                    cell.nameLabel.textColor = .zl.toolTitleTintColor
+                } else {
+                    cell.nameLabel.textColor = .zl.toolTitleNormalColor
+                }
+                
+                return cell
+            } else { // adjustCollectionView
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLAdjustToolCell.zl.identifier, for: indexPath) as! ZLAdjustToolCell
+                
+                let tool = adjustTools[indexPath.row]
+                
+                cell.imageView.isHighlighted = false
+                cell.adjustTool = tool
+                let isSelected = tool == selectedAdjustTool
+                cell.imageView.isHighlighted = isSelected
+                
+                if isSelected {
+                    cell.nameLabel.textColor = .zl.toolTitleTintColor
+                } else {
+                    cell.nameLabel.textColor = .zl.toolTitleNormalColor
+                }
+                
+                return cell
             }
-            
-            return cell
-        } else if collectionView == filterCollectionView {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLFilterImageCell.zl.identifier, for: indexPath) as! ZLFilterImageCell
-            
-            let image = thumbnailFilterImages[indexPath.row]
-            let filter = ZLImageEditorConfiguration.default().filters[indexPath.row]
-            
-            cell.nameLabel.text = filter.name
-            cell.imageView.image = image
-            
-            if currentFilter === filter {
-                cell.nameLabel.textColor = .zl.toolTitleTintColor
-            } else {
-                cell.nameLabel.textColor = .zl.toolTitleNormalColor
-            }
-            
-            return cell
-        } else {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLAdjustToolCell.zl.identifier, for: indexPath) as! ZLAdjustToolCell
-            
-            let tool = adjustTools[indexPath.row]
-            
-            cell.imageView.isHighlighted = false
-            cell.adjustTool = tool
-            let isSelected = tool == selectedAdjustTool
-            cell.imageView.isHighlighted = isSelected
-            
-            if isSelected {
-                cell.nameLabel.textColor = .zl.toolTitleTintColor
-            } else {
-                cell.nameLabel.textColor = .zl.toolTitleNormalColor
-            }
-            
-            return cell
         }
-    }
+
     
     public func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        if collectionView == editToolCollectionView {
-            let toolType = tools[indexPath.row]
-            switch toolType {
-            case .draw:
-                drawBtnClick()
-            case .clip:
-                clipBtnClick()
-            case .imageSticker:
-                imageStickerBtnClick()
-            case .textSticker:
-                textStickerBtnClick()
-            case .mosaic:
-                mosaicBtnClick()
-            case .filter:
-                filterBtnClick()
-            case .adjust:
-                adjustBtnClick()
-            }
-        } else if collectionView == drawColorCollectionView {
-            currentDrawColor = drawColors[indexPath.row]
-            switchEraserBtnStatus(false, reloadData: false)
-        } else if collectionView == filterCollectionView {
-            let filter = ZLImageEditorConfiguration.default().filters[indexPath.row]
-            editorManager.storeAction(.filter(oldFilter: currentFilter, newFilter: filter))
-            changeFilter(filter)
-        } else {
-            let tool = adjustTools[indexPath.row]
-            if tool != selectedAdjustTool {
-                changeAdjustTool(tool)
-            }
-        }
-        collectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
-        collectionView.reloadData()
-    }
-}
+       
+          if collectionView == editToolCollectionView {
+              deselectShapeSticker()
+              let toolType = tools[indexPath.row]
+              switch toolType {
+              case .draw: drawBtnClick()
+              case .clip: clipBtnClick()
+              case .imageSticker: imageStickerBtnClick()
+              case .shapeSticker: shapeStickerBtnClick()
+              case .textSticker: textStickerBtnClick()
+              case .mosaic: mosaicBtnClick()
+              case .filter: filterBtnClick()
+              case .adjust: adjustBtnClick()
+              }
+          } else if collectionView == drawColorCollectionView {
+              let selectedColor = drawColors[indexPath.row]
+              
+              // If a shape sticker is currently selected...
+              if let shapeSticker = self.selectedShapeSticker {
+                  // Get the state *before* the change for the undo manager.
+                  let oldState = shapeSticker.state
+                  
+                  // *** THE CORE FIX IS HERE ***
+                  // Call the new, explicit update function on the sticker.
+                  shapeSticker.update(color: selectedColor)
+                  
+                  // Get the state *after* the change.
+                  let newState = shapeSticker.state
+                  
+                  // Save the action.
+                  editorManager.storeAction(.sticker(oldState: oldState, newState: newState))
+              } else {
+                  // Otherwise, the user is just changing the draw tool color.
+                  currentDrawColor = selectedColor
+                  switchEraserBtnStatus(false, reloadData: false)
+              }
+              if let shapeSticker = self.selectedShapeSticker {
+                  print("Color tapped! Attempting to change color of sticker: \(shapeSticker.id) to \(selectedColor.description)")
+                  // ... rest of the code
+              } else {
+                  print("Color tapped, but no shape sticker is selected. Changing draw color.")
+              }
+              
+              // Reload the color picker to update the selection highlight.
+              collectionView.reloadData()
+              
+          } else if collectionView == filterCollectionView {
+              let filter = ZLImageEditorConfiguration.default().filters[indexPath.row]
+              editorManager.storeAction(.filter(oldFilter: currentFilter, newFilter: filter))
+              changeFilter(filter)
+              collectionView.reloadData()
+          } else { // adjustCollectionView
+              let tool = adjustTools[indexPath.row]
+              if tool != selectedAdjustTool {
+                  changeAdjustTool(tool)
+              }
+              collectionView.reloadData()
+          }
+          
+          collectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
+      }
+  }
+
 
 extension ZLEditImageViewController: ZLStickerViewDelegate {
     func stickerBeginOperation(_ sticker: ZLBaseStickerView) {
+        deselectShapeSticker()
         stickersContainer.bringSubviewToFront(sticker)
         preStickerState = sticker.state
         
@@ -1959,6 +2131,7 @@ extension ZLEditImageViewController: ZLStickerViewDelegate {
                 (view as? ZLStickerViewAdditional)?.gesIsEnabled = false
             }
         }
+        deselectShapeSticker()
     }
     
     func stickerOnOperation(_ sticker: ZLBaseStickerView, panGes: UIPanGestureRecognizer) {
@@ -2004,12 +2177,33 @@ extension ZLEditImageViewController: ZLStickerViewDelegate {
         }
     }
     
-    func stickerDidTap(_ sticker: ZLBaseStickerView) {
+     func stickerDidTap(_ sticker: ZLBaseStickerView) {
         stickersContainer.bringSubviewToFront(sticker)
+        
+        // Reset the border state of all other stickers.
         stickersContainer.subviews.forEach { view in
             if view !== sticker {
                 (view as? ZLStickerViewAdditional)?.resetState()
             }
+        }
+        
+        // If the tapped sticker is a shape...
+        if let shapeSticker = sticker as? ZLShapeStickerView {
+            // If it's already selected, tapping it again will deselect it.
+            if self.selectedShapeSticker == shapeSticker {
+                deselectShapeSticker()
+                shapeSticker.startTimer() // Keep border visible for a moment
+            } else {
+                // If another shape was selected, deselect it first.
+                deselectShapeSticker()
+                // Now, select the new one and show its color picker.
+                self.selectedShapeSticker = shapeSticker
+                showShapeColorPicker()
+            }
+        } else {
+            // If the tapped sticker is NOT a shape (e.g., text or image),
+            // make sure to deselect any active shape.
+            deselectShapeSticker()
         }
     }
     

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D28660F2DF87B2B0048A389 /* ShapeStickerContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D28660E2DF87B2B0048A389 /* ShapeStickerContainerView.swift */; };
 		985A2D6A282A85B5007AE0C6 /* cubano-regular-webfont.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 985A2D57282A85B4007AE0C6 /* cubano-regular-webfont.ttf */; };
 		985A2D6B282A85B5007AE0C6 /* Homestead-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 985A2D58282A85B4007AE0C6 /* Homestead-Regular.ttf */; };
 		985A2D6C282A85B5007AE0C6 /* Haymaker.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 985A2D59282A85B4007AE0C6 /* Haymaker.ttf */; };
@@ -90,6 +91,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1D28660E2DF87B2B0048A389 /* ShapeStickerContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShapeStickerContainerView.swift; sourceTree = "<group>"; };
 		985A2D57282A85B4007AE0C6 /* cubano-regular-webfont.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "cubano-regular-webfont.ttf"; sourceTree = "<group>"; };
 		985A2D58282A85B4007AE0C6 /* Homestead-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Homestead-Regular.ttf"; sourceTree = "<group>"; };
 		985A2D59282A85B4007AE0C6 /* Haymaker.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Haymaker.ttf; sourceTree = "<group>"; };
@@ -253,6 +255,7 @@
 		E4020926256BA9D70077F5DC /* Example */ = {
 			isa = PBXGroup;
 			children = (
+				1D28660E2DF87B2B0048A389 /* ShapeStickerContainerView.swift */,
 				985A2D56282A85B4007AE0C6 /* Fonts */,
 				E402093E256BAA420077F5DC /* SnapKit */,
 				E4020927256BA9D70077F5DC /* AppDelegate.swift */,
@@ -471,6 +474,7 @@
 				E4020974256BAA420077F5DC /* ConstraintConfig.swift in Sources */,
 				E402096D256BAA420077F5DC /* ConstraintMakerFinalizable.swift in Sources */,
 				E402096A256BAA420077F5DC /* ConstraintViewDSL.swift in Sources */,
+				1D28660F2DF87B2B0048A389 /* ShapeStickerContainerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

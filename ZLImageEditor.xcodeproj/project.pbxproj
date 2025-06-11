@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D28660D2DF768CB0048A389 /* ZLShapeStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D28660C2DF768CB0048A389 /* ZLShapeStickerView.swift */; };
 		E40208DC256B9BA60077F5DC /* ZLImageEditor.h in Headers */ = {isa = PBXBuildFile; fileRef = E40208DA256B9BA60077F5DC /* ZLImageEditor.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		E40208EB256B9F9C0077F5DC /* ZLEditImageViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40208E4256B9F9C0077F5DC /* ZLEditImageViewController.swift */; };
 		E40208EC256B9F9C0077F5DC /* ZLImageStickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40208E5256B9F9C0077F5DC /* ZLImageStickerView.swift */; };
@@ -47,6 +48,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1D28660C2DF768CB0048A389 /* ZLShapeStickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZLShapeStickerView.swift; sourceTree = "<group>"; };
 		E40208D7256B9BA60077F5DC /* ZLImageEditor.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ZLImageEditor.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E40208DA256B9BA60077F5DC /* ZLImageEditor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZLImageEditor.h; sourceTree = "<group>"; };
 		E40208DB256B9BA60077F5DC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -130,6 +132,7 @@
 		E4020902256BA00D0077F5DC /* General */ = {
 			isa = PBXGroup;
 			children = (
+				1D28660C2DF768CB0048A389 /* ZLShapeStickerView.swift */,
 				E4020909256BA1DE0077F5DC /* ZLImageEditorDefine.swift */,
 				E402090D256BA1F40077F5DC /* ZLImageEditorLanguageDefine.swift */,
 				E4020911256BA27D0077F5DC /* ZLImageEditorConfiguration.swift */,
@@ -263,6 +266,7 @@
 				FD3073372AD80D0000CFB618 /* ZLEditorManager.swift in Sources */,
 				FD3073352AD80B7700CFB618 /* ZLBaseStickertState.swift in Sources */,
 				E40208FD256BA0080077F5DC /* UIImage+ZLImageEditor.swift in Sources */,
+				1D28660D2DF768CB0048A389 /* ZLShapeStickerView.swift in Sources */,
 				FD8EFA54277206D30067ADF1 /* ZLEditToolCells.swift in Sources */,
 				FD1551CA28BE2C720043D844 /* UIView+ZLImageEditor.swift in Sources */,
 				E40208FF256BA0080077F5DC /* Bundle+ZLImageEditor.swift in Sources */,
