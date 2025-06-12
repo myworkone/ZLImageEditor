@@ -104,7 +104,7 @@ public class ZLShapeStickerView: ZLBaseStickerView {
     /// This is a static "factory" method that creates a white, template image for any given shape.
     /// It's static so it can be used by other classes (like `ShapeStickerContainerView`) without needing an instance.
 public static func templateImage(for shapeType: ZLShapeType, size: CGSize) -> UIImage {
-    let imageSize = size.width > 0 ? size : CGSize(width: 100, height: 100)
+    let imageSize = size.width > 0 ? size : CGSize(width: 50, height: 50)
     let renderer = UIGraphicsImageRenderer(size: imageSize)
     
     let image = renderer.image { ctx in
@@ -125,12 +125,28 @@ public static func templateImage(for shapeType: ZLShapeType, size: CGSize) -> UI
 
         switch shapeType {
         case .arrow:
-            let arrowInset = rect.insetBy(dx: rect.width * 0.15, dy: rect.height * 0.35)
-            path.move(to: CGPoint(x: arrowInset.maxX - arrowInset.width * 0.5, y: arrowInset.minY))
-            path.addLine(to: CGPoint(x: arrowInset.maxX, y: arrowInset.midY))
-            path.addLine(to: CGPoint(x: arrowInset.maxX - arrowInset.width * 0.5, y: arrowInset.maxY))
-            path.move(to: CGPoint(x: arrowInset.maxX, y: arrowInset.midY))
-            path.addLine(to: CGPoint(x: arrowInset.minX, y: arrowInset.midY))
+            // 1. Define the key points for the arrow
+            let tipPoint = CGPoint(x: insetRect.maxX - 7, y: insetRect.midY)
+            let shaftStartPoint = CGPoint(x: insetRect.minX + 7, y: insetRect.midY)
+            
+            // Make the arrowhead proportional to the icon size
+            let arrowHeadWidth = insetRect.width * 0.4
+            let arrowHeadHeight = insetRect.height * 0.4
+            
+            let topLeftPoint = CGPoint(x: tipPoint.x - arrowHeadWidth, y: tipPoint.y - arrowHeadHeight)
+            let bottomLeftPoint = CGPoint(x: tipPoint.x - arrowHeadWidth, y: tipPoint.y + arrowHeadHeight)
+
+            // 2. Draw the arrowhead (the > shape) as one continuous path.
+            // This ensures the join at the tip is perfectly rounded by `lineJoinStyle`.
+            path.move(to: topLeftPoint)
+            path.addLine(to: tipPoint)
+            path.addLine(to: bottomLeftPoint)
+            
+            // 3. Draw the shaft. We lift the "pen" and move back to the tip
+            // to draw a separate line for the shaft.
+            path.move(to: tipPoint)
+            path.addLine(to: shaftStartPoint)
+
 
         case .rectangle:
             path.append(UIBezierPath(roundedRect: insetRect, cornerRadius: insetRect.width * 0.1))
@@ -139,45 +155,17 @@ public static func templateImage(for shapeType: ZLShapeType, size: CGSize) -> UI
             path.append(UIBezierPath(ovalIn: insetRect))
 
         case .triangle:
-            path.move(to: CGPoint(x: insetRect.midX, y: insetRect.minY))
-            path.addLine(to: CGPoint(x: insetRect.maxX, y: insetRect.maxY))
-            path.addLine(to: CGPoint(x: insetRect.minX, y: insetRect.maxY))
-            path.close()
+           // Define a radius for the corners.
+            let cornerRadius = insetRect.width * 0.05
+
+            // 1. Define the three vertices of the "sharp" triangle
+            let p1 = CGPoint(x: insetRect.midX, y: insetRect.minY) // Top corner
+            let p2 = CGPoint(x: insetRect.maxX, y: insetRect.maxY) // Bottom-right corner
+            let p3 = CGPoint(x: insetRect.minX, y: insetRect.maxY) // Bottom-left corner
             
-        case .star:
-            let center = CGPoint(x: insetRect.midX, y: insetRect.midY)
-            let radius = insetRect.width / 2
-            let pointsOnStar = 5
-            var angle: CGFloat = -(.pi / 2.0)
-            let angleIncrement = .pi * 2.0 / CGFloat(pointsOnStar)
-            let innerRadius = radius * 0.38
-            
-            for i in 0..<(pointsOnStar * 2) {
-                let r = (i % 2 == 0) ? radius : innerRadius
-                let point = CGPoint(x: center.x + r * cos(angle), y: center.y + r * sin(angle))
-                if i == 0 {
-                    path.move(to: point)
-                } else {
-                    path.addLine(to: point)
-                }
-                angle += angleIncrement / 2.0
-            }
-            path.close()
-            
-        case .warning:
-            // Draw the outer triangle
-            let warningInset = insetRect
-            path.move(to: CGPoint(x: warningInset.midX, y: warningInset.minY))
-            path.addLine(to: CGPoint(x: warningInset.maxX, y: warningInset.maxY))
-            path.addLine(to: CGPoint(x: warningInset.minX, y: warningInset.maxY))
-            path.close()
-            
-            // Draw the exclamation mark inside
-            path.move(to: CGPoint(x: rect.midX, y: rect.height * 0.45))
-            path.addLine(to: CGPoint(x: rect.midX, y: rect.height * 0.65))
-            path.move(to: CGPoint(x: rect.midX, y: rect.height * 0.75))
-            path.addArc(withCenter: CGPoint(x: rect.midX, y: rect.height * 0.75), radius: lineWidth / 2, startAngle: 0, endAngle: .pi * 2, clockwise: true)
-            
+            // create rounded corners
+            let roundedTrianglePath = UIBezierPath(roundedPolygon: [p1, p2, p3], cornerRadius: cornerRadius)
+            path.append(roundedTrianglePath)
         }
         
         path.stroke()
@@ -192,6 +180,41 @@ public static func templateImage(for shapeType: ZLShapeType, size: CGSize) -> UI
     }
 }
 
+extension UIBezierPath {
+    convenience init(roundedPolygon points: [CGPoint], cornerRadius: CGFloat) {
+        self.init()
+
+        guard points.count >= 3 else {
+            // Not enough points to form a polygon.
+            return
+        }
+
+        // Create a CGPath to build the shape
+        let path = CGMutablePath()
+
+        // Start at the midpoint of the last and first line segments
+        let startPoint = CGPoint(
+            x: (points.last!.x + points.first!.x) / 2,
+            y: (points.last!.y + points.first!.y) / 2
+        )
+        path.move(to: startPoint)
+
+        // Iterate through the points to create the rounded corners
+        for i in 0..<points.count {
+            let currentPoint = points[i]
+            let nextPoint = points[(i + 1) % points.count]
+            
+            // This is the Core Graphics function that reliably creates a rounded corner.
+            // It draws a line from the current position to the tangent of the arc,
+            // then draws the arc itself around `currentPoint`.
+            path.addArc(tangent1End: currentPoint, tangent2End: nextPoint, radius: cornerRadius)
+        }
+
+        path.closeSubpath()
+        self.cgPath = path
+    }
+}
+
 // Helper extension to scale normalized (0 to 1) points to a specific CGRect
 fileprivate extension CGPoint {
     func scaled(to rect: CGRect, from canvasSize: CGFloat = 24) -> CGPoint {
@@ -201,9 +224,7 @@ fileprivate extension CGPoint {
         return CGPoint(x: self.x * scale + offset.x, y: self.y * scale + offset.y)
     }
 }
-// MARK: - ADD THIS HELPER EXTENSION
 
-/// Add this extension to your project, e.g., at the bottom of the ZLBaseStickerView.swift file.
 /// It provides a backward-compatible way to tint an image.
 private extension UIImage {
     func zl_tinted(with color: UIColor) -> UIImage {

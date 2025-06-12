@@ -209,7 +209,7 @@ class ZLInputTextViewController: UIViewController {
         let doneBtnW = localLanguageTextValue(.done).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: .greatestFiniteMagnitude, height: ZLImageEditorLayout.bottomToolBtnH)).width + 20
         doneBtn.frame = CGRect(x: view.zl.width - 20 - doneBtnW, y: btnY, width: doneBtnW, height: ZLImageEditorLayout.bottomToolBtnH)
         
-        textView.frame = CGRect(x: 10, y: doneBtn.zl.bottom + 30, width: view.zl.width - 20, height: 200)
+        textView.frame = CGRect(x: 10, y: view.zl.height / 2, width: view.zl.width - 20, height: 200)
         
         // textStyleBtn.frame = CGRect(
         //     x: 12,

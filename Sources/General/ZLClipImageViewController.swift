@@ -326,19 +326,20 @@ class ZLClipImageViewController: UIViewController {
         
         layoutInitialImage(animate: true)
         
-        bottomToolView.frame = CGRect(x: 0, y: view.bounds.height - ZLClipImageViewController.bottomToolViewH, width: view.bounds.width, height: ZLClipImageViewController.bottomToolViewH)
+        bottomToolView.frame = CGRect(x: 0, y: ZLClipImageViewController.bottomToolViewH - 40, width: view.bounds.width, height: ZLClipImageViewController.bottomToolViewH - 40)
         bottomShadowLayer.frame = bottomToolView.bounds
         
-        bottomToolLineView.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: 1 / UIScreen.main.scale)
+        bottomToolLineView.frame = CGRect(x: 0, y: ZLClipImageViewController.clipRatioItemSize.height - 20, width: view.bounds.width, height: 1 / UIScreen.main.scale)
         let toolBtnH: CGFloat = 25
-        let toolBtnY = (ZLClipImageViewController.bottomToolViewH - toolBtnH) / 2 - 10
+        // let toolBtnY = (ZLClipImageViewController.bottomToolViewH - toolBtnH) / 2 - 10
+        let toolBtnY: CGFloat = toolBtnH / 2
         cancelBtn.frame = CGRect(x: 30, y: toolBtnY, width: toolBtnH, height: toolBtnH)
         let revertBtnW = localLanguageTextValue(.revert).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: toolBtnH)).width + 20
         revertBtn.frame = CGRect(x: (view.bounds.width - revertBtnW) / 2, y: toolBtnY, width: revertBtnW, height: toolBtnH)
         doneBtn.frame = CGRect(x: view.bounds.width - 30 - toolBtnH, y: toolBtnY, width: toolBtnH, height: toolBtnH)
         
-        let ratioColViewY = bottomToolView.frame.minY - ZLClipImageViewController.clipRatioItemSize.height - 5
-        rotateBtn.frame = CGRect(x: 30, y: ratioColViewY + (ZLClipImageViewController.clipRatioItemSize.height - 25) / 2, width: 25, height: 25)
+        let ratioColViewY = bottomToolView.frame.minY + ZLClipImageViewController.clipRatioItemSize.height
+        rotateBtn.frame = CGRect(x: 30, y: ratioColViewY, width: 25, height: 25)
         let ratioColViewX = rotateBtn.frame.maxX + 15
         clipRatioColView.frame = CGRect(x: ratioColViewX, y: ratioColViewY, width: view.bounds.width - ratioColViewX, height: 70)
         

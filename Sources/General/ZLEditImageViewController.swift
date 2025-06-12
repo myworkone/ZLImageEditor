@@ -172,23 +172,37 @@ open class ZLEditImageViewController: UIViewController {
       return label
     }()
     
-    open lazy var cancelBtn: ZLEnlargeButton = {
+    open lazy var fabBtn: ZLEnlargeButton = {
         let btn = ZLEnlargeButton(type: .custom)
         btn.setImage(.zl.getImage("zl_fab"), for: .normal)
         btn.adjustsImageWhenHighlighted = false
         btn.isEnabled = true
         btn.enlargeInset = 8
-        btn.addTarget(self, action: #selector(cancelBtnClick), for: .touchUpInside)
+        btn.addTarget(self, action: #selector(fabBtnClick), for: .touchUpInside)
         return btn
     }()
     
     open lazy var doneBtn: UIButton = {
         let btn = UIButton(type: .custom)
-        btn.titleLabel?.font = ZLImageEditorLayout.bottomToolTitleFont
+        let originalFont = ZLImageEditorLayout.bottomToolTitleFont
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: originalFont.pointSize)
         // btn.backgroundColor = .zl.editDoneBtnBgColor
         btn.setTitle(localLanguageTextValue(.editFinish), for: .normal)
         btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         btn.addTarget(self, action: #selector(doneBtnClick), for: .touchUpInside)
+        btn.layer.masksToBounds = true
+        btn.layer.cornerRadius = ZLImageEditorLayout.bottomToolBtnCornerRadius
+        return btn
+    }()
+
+    open lazy var cancelBtn: UIButton = {
+        let btn = UIButton(type: .custom)
+        let originalFont = ZLImageEditorLayout.bottomToolTitleFont
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: originalFont.pointSize)
+        // btn.backgroundColor = .zl.editDoneBtnBgColor
+        btn.setTitle(localLanguageTextValue(.cancel), for: .normal)
+        btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
+        btn.addTarget(self, action: #selector(cancelBtnClick), for: .touchUpInside)
         btn.layer.masksToBounds = true
         btn.layer.cornerRadius = ZLImageEditorLayout.bottomToolBtnCornerRadius
         return btn
@@ -322,7 +336,14 @@ open class ZLEditImageViewController: UIViewController {
     // The mask layer of mosaicImageLayer
     var mosaicImageLayerMaskLayer: CAShapeLayer?
     
-    // var selectedTool: ZLImageEditorConfiguration.EditTool?
+    var selectedTool: ZLImageEditorConfiguration.EditTool? {
+        didSet {
+            // When tool changes, deselect any shape sticker
+            if oldValue != selectedTool {
+                deselectShapeSticker()
+            }
+        }
+    }
     
     var selectedAdjustTool: ZLImageEditorConfiguration.AdjustTool?
     
@@ -356,15 +377,6 @@ open class ZLEditImageViewController: UIViewController {
     var shapeStickerContainerIsHidden = true
 
     var fontChooserContainerIsHidden = true
-
-    var selectedTool: ZLImageEditorConfiguration.EditTool? {
-        didSet {
-            // When tool changes, deselect any shape sticker
-            if oldValue != selectedTool {
-                deselectShapeSticker()
-            }
-        }
-    }
     
     // Add property to track the selected shape sticker for color changing
     var selectedShapeSticker: ZLShapeStickerView?
@@ -500,9 +512,9 @@ open class ZLEditImageViewController: UIViewController {
             ts.removeAll { $0 == .imageSticker }
         }
 
-        //  if ts.contains(.shapeSticker), ZLImageEditorConfiguration.default().imageStickerContainerView == nil {
-        //      ts.removeAll { $0 == .shapeSticker } 
-        //  }
+         if ts.contains(.shapeSticker), ZLImageEditorConfiguration.default().shapeStickerContainerView == nil {
+             ts.removeAll { $0 == .shapeSticker } 
+         }
         tools = ts
         adjustTools = ZLImageEditorConfiguration.default().adjustTools
         selectedAdjustTool = adjustTools.first
@@ -578,21 +590,21 @@ open class ZLEditImageViewController: UIViewController {
         
         bottomShadowView.frame = CGRect(x: 0, y: view.zl.height - 150 - insets.bottom, width: view.zl.width, height: 150 + insets.bottom)
         bottomShadowLayer.frame = bottomShadowView.bounds
-        
-        let undoBtnW = localLanguageTextValue(.cancel)
+
+        let cancelBtnW = localLanguageTextValue(.cancel)
             .zl.boundingRect(
                 font: ZLImageEditorLayout.bottomToolTitleFont,
                 limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: 28)
             ).width
-        undoBtn.frame = CGRect(x: 20, y: insets.top, width: undoBtnW, height: 30)
-        // cancelBtn.frame = CGRect(x: 20, y: insets.top, width: cancelBtnW, height: 30)
-        let doneBtnH = ZLImageEditorLayout.bottomToolBtnH
+        cancelBtn.frame = CGRect(x: 20, y: insets.top, width: cancelBtnW + 5, height: 30)
+        undoBtn.frame = CGRect(x: cancelBtn.zl.right + 20, y: insets.top, width: 30, height: 30)
+        let doneBtnH = 30.0
         let doneBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: doneBtnH)).width + 20
-        doneBtn.frame = CGRect(x: view.zl.width - 15 - doneBtnW, y: insets.top, width: doneBtnW, height: doneBtnH)
+        doneBtn.frame = CGRect(x: view.zl.width - 15 - doneBtnW, y: insets.top, width: doneBtnW, height: 30)
         // redoBtn.frame = CGRect(x: view.zl.width - 15 - 30, y: insets.top, width: 30, height: 30)
         // undoBtn.frame = CGRect(x: redoBtn.zl.left - 15 - 30, y: insets.top, width: 30, height: 30)
 
-        let leftPaddingForTitle: CGFloat = 10  // Space after undoBtn
+        let leftPaddingForTitle: CGFloat = -10  // Space after undoBtn
         let rightPaddingForTitle: CGFloat = 10 // Space before 
         
         // X coordinate for the title's frame
@@ -604,7 +616,7 @@ open class ZLEditImageViewController: UIViewController {
         // Ensure the width is not negative (can happen if buttons are too wide or padding too large)
         let titleWidth = max(0, availableWidthForTitle)
 
-        screenTitle.frame = CGRect( x: titleX, y: 10, width: titleWidth, height: 150 )
+        screenTitle.frame = CGRect(x: titleX, y: insets.top, width: titleWidth, height: 30 )
         // eraserBtn.frame = CGRect(x: 20, y: 30 + (drawColViewH - 36) / 2, width: 36, height: 36)
         // eraserBtnBgBlurView.frame = eraserBtn.frame
         // eraserLineView.frame = CGRect(x: eraserBtn.zl.right + 11, y: eraserBtn.frame.midY - 10, width: 1, height: 20)
@@ -641,11 +653,11 @@ open class ZLEditImageViewController: UIViewController {
         
         let toolY: CGFloat = 70
         
-        let cancelBtnH = ZLImageEditorLayout.bottomToolBtnH
-        let cancelBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: cancelBtnH)).width + 20
-        cancelBtn.frame = CGRect(x: view.zl.width - 20 - doneBtnW, y: toolY, width: doneBtnW, height: doneBtnH)
+        let fabBtnH = ZLImageEditorLayout.bottomToolBtnH
+        let fabBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: fabBtnH)).width + 20
+        fabBtn.frame = CGRect(x: view.zl.width - 20 - fabBtnW, y: toolY, width: fabBtnW, height: fabBtnH)
         
-        editToolCollectionView.frame = CGRect(x: 20, y: toolY, width: view.zl.width - cancelBtnW, height: 50)
+        editToolCollectionView.frame = CGRect(x: 20, y: toolY, width: view.zl.width - fabBtnW, height: 50)
         
         if !drawPaths.isEmpty {
             drawLine()
@@ -746,7 +758,7 @@ open class ZLEditImageViewController: UIViewController {
         topShadowView.layer.addSublayer(topShadowLayer)
         topShadowView.addSubview(doneBtn)
         // topShadowView.addSubview(doneBtn)
-        // topShadowView.addSubview(cancelBtn)
+        topShadowView.addSubview(cancelBtn)
         topShadowView.addSubview(undoBtn)
         topShadowView.addSubview(screenTitle)
         // topShadowView.addSubview(redoBtn)
@@ -754,7 +766,7 @@ open class ZLEditImageViewController: UIViewController {
         view.addSubview(bottomShadowView)
         bottomShadowView.layer.addSublayer(bottomShadowLayer)
         bottomShadowView.addSubview(editToolCollectionView)
-        bottomShadowView.addSubview(cancelBtn)
+        bottomShadowView.addSubview(fabBtn)
         // bottomShadowView.addSubview(doneBtn)
         
         if tools.contains(.draw) {
@@ -954,15 +966,17 @@ open class ZLEditImageViewController: UIViewController {
         stickersContainer.transform = transform
     }
     
-    @objc func cancelBtnClick() {
+    @objc func fabBtnClick() {
         dismiss(animated: animateDismiss) {
             self.cancelBlock?()
         }
     }
 
-    // TODO: Add deselectShapeSticker() to all other tool selection methods as well...
-    // e.g., clipBtnClick, imageStickerBtnClick, etc.
-    // This ensures the shape color picker is hidden when another tool is chosen. 
+    @objc func cancelBtnClick() {
+        dismiss(animated: animateDismiss) {
+            self.cancelBlock?()
+        }
+    }
     
     func drawBtnClick() {
         deselectShapeSticker()
@@ -1174,7 +1188,7 @@ open class ZLEditImageViewController: UIViewController {
            stickerStates.isEmpty,
            currentFilter.applier == nil,
            currentAdjustStatus.allValueIsZero {
-            hasEdit = false
+           hasEdit = false
         }
         
         var resImage = originalImage
@@ -2064,26 +2078,16 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
               if let shapeSticker = self.selectedShapeSticker {
                   // Get the state *before* the change for the undo manager.
                   let oldState = shapeSticker.state
-                  
-                  // *** THE CORE FIX IS HERE ***
                   // Call the new, explicit update function on the sticker.
                   shapeSticker.update(color: selectedColor)
-                  
                   // Get the state *after* the change.
                   let newState = shapeSticker.state
-                  
                   // Save the action.
                   editorManager.storeAction(.sticker(oldState: oldState, newState: newState))
               } else {
                   // Otherwise, the user is just changing the draw tool color.
                   currentDrawColor = selectedColor
                   switchEraserBtnStatus(false, reloadData: false)
-              }
-              if let shapeSticker = self.selectedShapeSticker {
-                  print("Color tapped! Attempting to change color of sticker: \(shapeSticker.id) to \(selectedColor.description)")
-                  // ... rest of the code
-              } else {
-                  print("Color tapped, but no shape sticker is selected. Changing draw color.")
               }
               
               // Reload the color picker to update the selection highlight.

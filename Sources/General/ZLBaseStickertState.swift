@@ -29,13 +29,13 @@ import UIKit
 // Define the available shape types
 public enum ZLShapeType: String, CaseIterable {
     case arrow
+    case triangle
     case rectangle
     case circle
-    case triangle
-    case star
+    // case star
     // case thumbsUp
     // case thumbsDown
-    case warning
+    // case warning
     // case search
 }
 
