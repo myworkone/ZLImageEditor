@@ -1261,70 +1261,79 @@ open class ZLEditImageViewController: UIViewController {
         }
     }
     
+// In ZLEditImageViewController.swift
+
     @objc func doneBtnClick() {
-        var stickerStates: [ZLBaseStickertState] = []
-        for view in stickersContainer.subviews {
-            guard let view = view as? ZLBaseStickerView else { continue }
-            stickerStates.append(view.state)
-        }
-        
-        var hasEdit = true
-        if drawPaths.isEmpty,
-           currentClipStatus.editRect.size == imageSize,
-           currentClipStatus.angle == 0,
-           mosaicPaths.isEmpty,
-           stickerStates.isEmpty,
-           currentFilter.applier == nil,
-           currentAdjustStatus.allValueIsZero {
-           hasEdit = false
-        }
-        
-        var resImage = originalImage
-        var editModel: ZLEditImageModel?
-        
-        func callback() {
-            dismiss(animated: animateDismiss) {
-                self.editFinishBlock?(resImage, editModel)
-            }
-        }
-        
-        guard hasEdit else {
-            callback()
-            return
-        }
-        
-        autoreleasepool {
-            let hud = ZLProgressHUD(style: ZLImageEditorUIConfiguration.default().hudStyle)
-            hud.show(in: view)
+        // Start the FAB exit animation immediately.
+        // The original logic will run after the animation is complete.
+        animateFabButtonOut { [weak self] in
+            guard let self = self else { return }
+
+            // --- All of the original doneBtnClick logic now goes here ---
             
-            DispatchQueue.main.async { [self] in
-                resImage = buildImage()
-                resImage = resImage.zl
-                    .clipImage(
-                        angle: currentClipStatus.angle,
-                        editRect: currentClipStatus.editRect,
-                        isCircle: currentClipStatus.ratio?.isCircle ?? false
-                    ) ?? resImage
-                if let oriDataSize = originalImage.jpegData(compressionQuality: 1)?.count {
-                    resImage = resImage.zl.compress(to: oriDataSize)
+            var stickerStates: [ZLBaseStickertState] = []
+            for view in self.stickersContainer.subviews {
+                guard let view = view as? ZLBaseStickerView else { continue }
+                stickerStates.append(view.state)
+            }
+            
+            var hasEdit = true
+            if self.drawPaths.isEmpty,
+              self.currentClipStatus.editRect.size == self.imageSize,
+              self.currentClipStatus.angle == 0,
+              self.mosaicPaths.isEmpty,
+              stickerStates.isEmpty,
+              self.currentFilter.applier == nil,
+              self.currentAdjustStatus.allValueIsZero {
+              hasEdit = false
+            }
+            
+            var resImage = self.originalImage
+            var editModel: ZLEditImageModel?
+            
+            let callback = {
+                self.dismiss(animated: self.animateDismiss) {
+                    self.editFinishBlock?(resImage, editModel)
                 }
-                
-                editModel = ZLEditImageModel(
-                    drawPaths: drawPaths,
-                    mosaicPaths: mosaicPaths,
-                    clipStatus: currentClipStatus,
-                    adjustStatus: currentAdjustStatus,
-                    selectFilter: currentFilter,
-                    stickers: stickerStates,
-                    actions: editorManager.actions
-                )
-                
-                hud.hide()
+            }
+            
+            guard hasEdit else {
                 callback()
+                return
+            }
+            
+            autoreleasepool {
+                let hud = ZLProgressHUD(style: ZLImageEditorUIConfiguration.default().hudStyle)
+                hud.show(in: self.view)
+                
+                DispatchQueue.main.async {
+                    resImage = self.buildImage()
+                    resImage = resImage.zl
+                        .clipImage(
+                            angle: self.currentClipStatus.angle,
+                            editRect: self.currentClipStatus.editRect,
+                            isCircle: self.currentClipStatus.ratio?.isCircle ?? false
+                        ) ?? resImage
+                    if let oriDataSize = self.originalImage.jpegData(compressionQuality: 1)?.count {
+                        resImage = resImage.zl.compress(to: oriDataSize)
+                    }
+                    
+                    editModel = ZLEditImageModel(
+                        drawPaths: self.drawPaths,
+                        mosaicPaths: self.mosaicPaths,
+                        clipStatus: self.currentClipStatus,
+                        adjustStatus: self.currentAdjustStatus,
+                        selectFilter: self.currentFilter,
+                        stickers: stickerStates,
+                        actions: self.editorManager.actions
+                    )
+                    
+                    hud.hide()
+                    callback()
+                }
             }
         }
     }
-    
     @objc func undoBtnClick() {
         editorManager.undoAction()
     }
