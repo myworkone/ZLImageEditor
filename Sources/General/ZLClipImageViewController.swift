@@ -125,31 +125,39 @@ class ZLClipImageViewController: UIViewController {
         return view
     }()
     
-    lazy var cancelBtn: ZLEnlargeButton = {
-        let btn = ZLEnlargeButton(type: .custom)
-        btn.setImage(.zl.getImage("zl_close"), for: .normal)
-        btn.adjustsImageWhenHighlighted = false
-        btn.enlargeInset = 20
+    open lazy var cancelBtn: UIButton = {
+        let btn = UIButton(type: .custom)
+        let originalFont = ZLImageEditorLayout.bottomToolTitleFont
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: originalFont.pointSize)
+        // btn.backgroundColor = .zl.editDoneBtnBgColor
+        btn.setTitle(localLanguageTextValue(.cancel), for: .normal)
+        btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         btn.addTarget(self, action: #selector(cancelBtnClick), for: .touchUpInside)
+        btn.layer.masksToBounds = true
+        btn.layer.cornerRadius = ZLImageEditorLayout.bottomToolBtnCornerRadius
         return btn
     }()
-    
-    lazy var revertBtn: ZLEnlargeButton = {
+
+    open lazy var revertBtn: ZLEnlargeButton = {
         let btn = ZLEnlargeButton(type: .custom)
-        btn.setTitleColor(.white, for: .normal)
-        btn.setTitle(localLanguageTextValue(.revert), for: .normal)
-        btn.enlargeInset = 20
-        btn.titleLabel?.font = ZLImageEditorLayout.bottomToolTitleFont
+        btn.setImage(.zl.getImage("zl_undo"), for: .normal)
+        btn.adjustsImageWhenHighlighted = false
+        btn.isEnabled = true
+        btn.enlargeInset = 8
         btn.addTarget(self, action: #selector(revertBtnClick), for: .touchUpInside)
         return btn
     }()
     
-    lazy var doneBtn: ZLEnlargeButton = {
-        let btn = ZLEnlargeButton(type: .custom)
-        btn.setImage(.zl.getImage("zl_right"), for: .normal)
-        btn.adjustsImageWhenHighlighted = false
-        btn.enlargeInset = 20
+    open lazy var doneBtn: UIButton = {
+        let btn = UIButton(type: .custom)
+        let originalFont = ZLImageEditorLayout.bottomToolTitleFont
+        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: originalFont.pointSize)
+        // btn.backgroundColor = .zl.editDoneBtnBgColor
+        btn.setTitle(localLanguageTextValue(.editFinish), for: .normal)
+        btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         btn.addTarget(self, action: #selector(doneBtnClick), for: .touchUpInside)
+        btn.layer.masksToBounds = true
+        btn.layer.cornerRadius = ZLImageEditorLayout.bottomToolBtnCornerRadius
         return btn
     }()
     
@@ -333,10 +341,18 @@ class ZLClipImageViewController: UIViewController {
         let toolBtnH: CGFloat = 25
         // let toolBtnY = (ZLClipImageViewController.bottomToolViewH - toolBtnH) / 2 - 10
         let toolBtnY: CGFloat = toolBtnH / 2
-        cancelBtn.frame = CGRect(x: 30, y: toolBtnY, width: toolBtnH, height: toolBtnH)
+        let cancelBtnW = localLanguageTextValue(.cancel)
+            .zl.boundingRect(
+                font: ZLImageEditorLayout.bottomToolTitleFont,
+                limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: 28)
+            ).width
+        cancelBtn.frame = CGRect(x: 20, y: toolBtnY, width: cancelBtnW + 5, height: toolBtnH)
         let revertBtnW = localLanguageTextValue(.revert).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: toolBtnH)).width + 20
-        revertBtn.frame = CGRect(x: (view.bounds.width - revertBtnW) / 2, y: toolBtnY, width: revertBtnW, height: toolBtnH)
-        doneBtn.frame = CGRect(x: view.bounds.width - 30 - toolBtnH, y: toolBtnY, width: toolBtnH, height: toolBtnH)
+        // revertBtn.frame = CGRect(x: (view.bounds.width - revertBtnW) / 2, y: toolBtnY, width: revertBtnW, height: toolBtnH)
+        revertBtn.frame = CGRect(x: cancelBtn.zl.right + 20, y: toolBtnY, width: 30, height: 30)
+        let doneBtnH = 30.0
+        let doneBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: doneBtnH)).width + 20
+        doneBtn.frame = CGRect(x: view.bounds.width - 15 - doneBtnW, y: toolBtnY, width: doneBtnW, height: toolBtnH)
         
         let ratioColViewY = bottomToolView.frame.minY + ZLClipImageViewController.clipRatioItemSize.height
         rotateBtn.frame = CGRect(x: 30, y: ratioColViewY, width: 25, height: 25)

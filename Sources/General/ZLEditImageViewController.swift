@@ -480,6 +480,7 @@ open class ZLEditImageViewController: UIViewController {
             }
             vc.animateDismiss = animate
             vc.modalPresentationStyle = .fullScreen
+            vc.modalTransitionStyle = .crossDissolve
             parentVC?.present(vc, animated: animate, completion: nil)
         }
     }
