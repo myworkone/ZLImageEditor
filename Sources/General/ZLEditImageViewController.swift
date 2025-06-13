@@ -172,13 +172,49 @@ open class ZLEditImageViewController: UIViewController {
       return label
     }()
     
-    open lazy var fabBtn: ZLEnlargeButton = {
-        let btn = ZLEnlargeButton(type: .custom)
-        btn.setImage(.zl.getImage("zl_fab"), for: .normal)
-        btn.adjustsImageWhenHighlighted = false
-        btn.isEnabled = true
-        btn.enlargeInset = 8
+    open lazy var fabBtn: UIButton = {
+        // 1. Create the base button
+        let btn = UIButton(type: .custom)
+        
+        // 2. Set the background color and shape
+        btn.backgroundColor = UIColor(red: 255/255, green: 193/255, blue: 7/255, alpha: 1.0) // Yellow color
+        let buttonHeight = ZLImageEditorLayout.bottomToolBtnH
+        btn.layer.cornerRadius = buttonHeight / 2
+        btn.layer.masksToBounds = true
+        
+        // 3. Create a StackView to hold the dots horizontally
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
+        stackView.spacing = 6
+        stackView.alignment = .center
+        stackView.distribution = .fillEqually
+        // The stackView should not handle touch events itself
+        stackView.isUserInteractionEnabled = false
+        
+        // 4. Create the three white dots and add them to the stack view
+        let dotSize: CGFloat = 8
+        for _ in 0..<3 {
+            let dot = UIView()
+            dot.backgroundColor = .white
+            dot.translatesAutoresizingMaskIntoConstraints = false
+            // Set a fixed size for the dots
+            dot.widthAnchor.constraint(equalToConstant: dotSize).isActive = true
+            dot.heightAnchor.constraint(equalToConstant: dotSize).isActive = true
+            dot.layer.cornerRadius = dotSize / 2
+            stackView.addArrangedSubview(dot)
+        }
+        
+        // 5. Add the stackView to the button and center it
+        btn.addSubview(stackView)
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stackView.centerXAnchor.constraint(equalTo: btn.centerXAnchor),
+            stackView.centerYAnchor.constraint(equalTo: btn.centerYAnchor)
+        ])
+        
+        // 6. Add the original action target
         btn.addTarget(self, action: #selector(fabBtnClick), for: .touchUpInside)
+        
         return btn
     }()
     
@@ -422,6 +458,8 @@ open class ZLEditImageViewController: UIViewController {
     var toolViewStateTimer: Timer?
     
     var hasAdjustedImage = false
+
+    private var isFirstLayout = true
     
     @objc public var editFinishBlock: ((UIImage, ZLEditImageModel?) -> Void)?
     
@@ -654,9 +692,35 @@ open class ZLEditImageViewController: UIViewController {
         
         let toolY: CGFloat = 70
         
-        let fabBtnH = ZLImageEditorLayout.bottomToolBtnH
-        let fabBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: fabBtnH)).width + 20
-        fabBtn.frame = CGRect(x: view.zl.width - 20 - fabBtnW, y: toolY, width: fabBtnW, height: fabBtnH)
+        let fabBtnH: CGFloat = 60 
+        let fabBtnW = fabBtnH
+        fabBtn.frame = CGRect(x: view.zl.width - 20 - fabBtnW, y: toolY - 5, width: fabBtnW, height: fabBtnH)
+
+        if isFirstLayout {
+      // 1. Set the flag to false so this animation never runs again.
+          isFirstLayout = false
+      
+          // 2. Store the final destination frame that was just calculated.
+          let finalFrame = fabBtn.frame
+          
+          // 3. Immediately move the button to its starting position, which is
+          //    off-screen at the top of the entire view.
+          fabBtn.frame.origin.y = -finalFrame.height
+          
+          // 4. Animate the button from its starting position to its final frame.
+          //    A spring animation will create a nice "drop and settle" effect.
+          UIView.animate(
+              withDuration: 0.8,
+              delay: 0.1,
+              usingSpringWithDamping: 0.6,
+              initialSpringVelocity: 0.8,
+              options: .curveEaseOut,
+              animations: {
+                  self.fabBtn.frame = finalFrame
+              },
+              completion: nil
+          )
+        }
         
         editToolCollectionView.frame = CGRect(x: 20, y: toolY, width: view.zl.width - fabBtnW, height: 50)
         
