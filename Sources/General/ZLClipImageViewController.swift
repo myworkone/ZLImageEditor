@@ -128,8 +128,7 @@ class ZLClipImageViewController: UIViewController {
     open lazy var cancelBtn: UIButton = {
         let btn = UIButton(type: .custom)
         let originalFont = ZLImageEditorLayout.bottomToolTitleFont
-        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: originalFont.pointSize)
-        // btn.backgroundColor = .zl.editDoneBtnBgColor
+        btn.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .heavy)
         btn.setTitle(localLanguageTextValue(.cancel), for: .normal)
         btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         btn.addTarget(self, action: #selector(cancelBtnClick), for: .touchUpInside)
@@ -151,8 +150,7 @@ class ZLClipImageViewController: UIViewController {
     open lazy var doneBtn: UIButton = {
         let btn = UIButton(type: .custom)
         let originalFont = ZLImageEditorLayout.bottomToolTitleFont
-        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: originalFont.pointSize)
-        // btn.backgroundColor = .zl.editDoneBtnBgColor
+        btn.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .heavy)
         btn.setTitle(localLanguageTextValue(.editFinish), for: .normal)
         btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         btn.addTarget(self, action: #selector(doneBtnClick), for: .touchUpInside)
@@ -346,7 +344,7 @@ class ZLClipImageViewController: UIViewController {
                 font: ZLImageEditorLayout.bottomToolTitleFont,
                 limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: 28)
             ).width
-        cancelBtn.frame = CGRect(x: 20, y: toolBtnY, width: cancelBtnW + 5, height: toolBtnH)
+        cancelBtn.frame = CGRect(x: 20, y: toolBtnY, width: cancelBtnW + 10, height: toolBtnH)
         let revertBtnW = localLanguageTextValue(.revert).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: toolBtnH)).width + 20
         // revertBtn.frame = CGRect(x: (view.bounds.width - revertBtnW) / 2, y: toolBtnY, width: revertBtnW, height: toolBtnH)
         revertBtn.frame = CGRect(x: cancelBtn.zl.right + 20, y: toolBtnY, width: 30, height: 30)

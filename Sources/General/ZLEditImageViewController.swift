@@ -168,7 +168,7 @@ open class ZLEditImageViewController: UIViewController {
       label.textColor = .white
       label.textAlignment = .center
       let currentFontSize = label.font.pointSize
-      label.font = UIFont.boldSystemFont(ofSize: currentFontSize)
+      label.font = UIFont.systemFont(ofSize: 18, weight: .heavy)
       return label
     }()
     
@@ -221,8 +221,7 @@ open class ZLEditImageViewController: UIViewController {
     open lazy var doneBtn: UIButton = {
         let btn = UIButton(type: .custom)
         let originalFont = ZLImageEditorLayout.bottomToolTitleFont
-        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: originalFont.pointSize)
-        // btn.backgroundColor = .zl.editDoneBtnBgColor
+        btn.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .heavy)
         btn.setTitle(localLanguageTextValue(.editFinish), for: .normal)
         btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         btn.addTarget(self, action: #selector(doneBtnClick), for: .touchUpInside)
@@ -234,8 +233,7 @@ open class ZLEditImageViewController: UIViewController {
     open lazy var cancelBtn: UIButton = {
         let btn = UIButton(type: .custom)
         let originalFont = ZLImageEditorLayout.bottomToolTitleFont
-        btn.titleLabel?.font = UIFont.boldSystemFont(ofSize: originalFont.pointSize)
-        // btn.backgroundColor = .zl.editDoneBtnBgColor
+        btn.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .heavy)
         btn.setTitle(localLanguageTextValue(.cancel), for: .normal)
         btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         btn.addTarget(self, action: #selector(cancelBtnClick), for: .touchUpInside)
@@ -635,7 +633,7 @@ open class ZLEditImageViewController: UIViewController {
                 font: ZLImageEditorLayout.bottomToolTitleFont,
                 limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: 28)
             ).width
-        cancelBtn.frame = CGRect(x: 20, y: insets.top, width: cancelBtnW + 5, height: 30)
+        cancelBtn.frame = CGRect(x: 20, y: insets.top, width: cancelBtnW + 10, height: 30)
         undoBtn.frame = CGRect(x: cancelBtn.zl.right + 20, y: insets.top, width: 30, height: 30)
         let doneBtnH = 30.0
         let doneBtnW = localLanguageTextValue(.editFinish).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: CGFloat.greatestFiniteMagnitude, height: doneBtnH)).width + 20
@@ -1032,14 +1030,22 @@ open class ZLEditImageViewController: UIViewController {
     }
     
     @objc func fabBtnClick() {
-        dismiss(animated: animateDismiss) {
-            self.cancelBlock?()
+        // Animate the FAB button out, and in the completion block,
+        // execute the original dismiss logic.
+        animateFabButtonOut {
+            self.dismiss(animated: self.animateDismiss) {
+                self.cancelBlock?()
+            }
         }
     }
 
     @objc func cancelBtnClick() {
-        dismiss(animated: animateDismiss) {
-            self.cancelBlock?()
+        // Animate the FAB button out, and in the completion block,
+        // execute the original dismiss logic.
+        animateFabButtonOut {
+            self.dismiss(animated: self.animateDismiss) {
+                self.cancelBlock?()
+            }
         }
     }
     
@@ -1059,6 +1065,23 @@ open class ZLEditImageViewController: UIViewController {
     
     @objc private func eraserBtnClick() {
         switchEraserBtnStatus(!eraserBtn.isSelected)
+    }
+
+    private func animateFabButtonOut(completion: @escaping () -> Void) {
+        // Animate the button's frame to be off-screen at the top.
+        UIView.animate(
+            withDuration: 0.3, // A faster exit animation feels more responsive
+            delay: 0,
+            options: .curveEaseIn, // EaseIn makes it look like it's accelerating away
+            animations: {
+                // Set the button's final position above the top edge of the view.
+                self.fabBtn.frame.origin.y = -self.fabBtn.frame.height
+            },
+            completion: { _ in
+                // IMPORTANT: Call the completion handler after the animation finishes.
+                completion()
+            }
+        )
     }
     
     private func switchEraserBtnStatus(_ isSelected: Bool, reloadData: Bool = true) {
