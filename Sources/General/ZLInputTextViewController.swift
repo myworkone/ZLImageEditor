@@ -287,30 +287,41 @@ class ZLInputTextViewController: UIViewController {
         dismiss(animated: true, completion: nil)
     }
     
-    @objc func doneBtnClick() {
-        textView.tintColor = .clear
-        textView.resignFirstResponder()
-        
-        var image: UIImage?
-        
-        if !textView.text.isEmpty {
-            for subview in textView.subviews {
-                if NSStringFromClass(subview.classForCoder) == "_UITextContainerView" {
-                    let size = textView.sizeThatFits(subview.frame.size)
-                    image = UIGraphicsImageRenderer.zl.renderImage(size: size) { context in
-                        if textStyle == .bg {
-                            textLayer.render(in: context)
-                        }
-                        
-                        subview.layer.render(in: context)
+@objc func doneBtnClick() {
+    textView.tintColor = .clear
+    textView.resignFirstResponder()
+    
+    var image: UIImage?
+    
+    if !textView.text.isEmpty {
+        let originalAlignment = textView.textAlignment
+        // Temporarily change alignment to .left to ensure the text is rendered
+        // at the origin of its container. This makes capturing it as an image reliable.
+        if originalAlignment == .center {
+            textView.textAlignment = .left
+            textView.layoutManager.ensureLayout(for: textView.textContainer)
+        }
+
+        for subview in textView.subviews {
+            if NSStringFromClass(subview.classForCoder) == "_UITextContainerView" {
+                let size = textView.sizeThatFits(subview.frame.size)
+                image = UIGraphicsImageRenderer.zl.renderImage(size: size) { context in
+                    if textStyle == .bg {
+                        textLayer.render(in: context)
                     }
+                    subview.layer.render(in: context)
                 }
             }
         }
         
-        endInput?(textView.text, currentColor, font, image, textStyle)
-        dismiss(animated: true, completion: nil)
+        if originalAlignment == .center {
+            textView.textAlignment = originalAlignment
+        }
     }
+    
+    endInput?(textView.text, currentColor, font, image, textStyle)
+    dismiss(animated: true, completion: nil)
+}
     
     @objc private func keyboardWillShow(_ notify: Notification) {
         let rect = notify.userInfo?[UIApplication.keyboardFrameEndUserInfoKey] as? CGRect
