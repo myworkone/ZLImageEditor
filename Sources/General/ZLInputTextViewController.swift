@@ -59,7 +59,7 @@ class ZLInputTextViewController: UIViewController {
     private lazy var cancelBtn: UIButton = {
         let btn = UIButton(type: .custom)
         btn.setTitle(localLanguageTextValue(.cancel), for: .normal)
-        btn.titleLabel?.font = ZLImageEditorLayout.bottomToolTitleFont
+        btn.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .heavy)
         btn.addTarget(self, action: #selector(cancelBtnClick), for: .touchUpInside)
         return btn
     }()
@@ -69,7 +69,7 @@ class ZLInputTextViewController: UIViewController {
         btn.setTitle(localLanguageTextValue(.done), for: .normal)
         btn.setTitleColor(.zl.editDoneBtnTitleColor, for: .normal)
         // btn.backgroundColor = .zl.editDoneBtnBgColor
-        btn.titleLabel?.font = ZLImageEditorLayout.bottomToolTitleFont
+        btn.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .heavy)
         btn.addTarget(self, action: #selector(doneBtnClick), for: .touchUpInside)
         btn.layer.masksToBounds = true
         btn.layer.cornerRadius = ZLImageEditorLayout.bottomToolBtnCornerRadius
@@ -202,14 +202,14 @@ class ZLInputTextViewController: UIViewController {
         
         coverView.frame = bgImageView.bounds
         
-        let btnY = max(deviceSafeAreaInsets().top, 20) + 20
+         let btnY = max(deviceSafeAreaInsets().top, 0) + 20
         let cancelBtnW = localLanguageTextValue(.cancel).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: .greatestFiniteMagnitude, height: ZLImageEditorLayout.bottomToolBtnH)).width + 20
         cancelBtn.frame = CGRect(x: 15, y: btnY, width: cancelBtnW, height: ZLImageEditorLayout.bottomToolBtnH)
         
         let doneBtnW = localLanguageTextValue(.done).zl.boundingRect(font: ZLImageEditorLayout.bottomToolTitleFont, limitSize: CGSize(width: .greatestFiniteMagnitude, height: ZLImageEditorLayout.bottomToolBtnH)).width + 20
-        doneBtn.frame = CGRect(x: view.zl.width - 20 - doneBtnW, y: btnY, width: doneBtnW, height: ZLImageEditorLayout.bottomToolBtnH)
+        doneBtn.frame = CGRect(x: view.zl.width - 15 - doneBtnW, y: btnY, width: doneBtnW, height: ZLImageEditorLayout.bottomToolBtnH)
         
-        textView.frame = CGRect(x: 10, y: view.zl.height / 2, width: view.zl.width - 20, height: 200)
+        textView.frame = CGRect(x: 10, y: cancelBtn.frame.maxY + 20, width: view.zl.width - 20, height: 200)
         
         // textStyleBtn.frame = CGRect(
         //     x: 12,
@@ -247,7 +247,7 @@ class ZLInputTextViewController: UIViewController {
         // toolView.addSubview(textStyleBtn)
         toolView.addSubview(collectionView)
         
-        textView.textAlignment = .left
+        textView.textAlignment = .center
         textView.returnKeyType = ZLImageEditorConfiguration.default().textStickerCanLineBreak ? .default : .done
 
         refreshTextViewUI()

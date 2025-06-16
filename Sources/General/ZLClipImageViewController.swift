@@ -360,6 +360,9 @@ class ZLClipImageViewController: UIViewController {
         if showRatioColView, let index = clipRatios.firstIndex(where: { $0 == self.selectedRatio }) {
             clipRatioColView.scrollToItem(at: IndexPath(row: index, section: 0), at: .centeredHorizontally, animated: false)
         }
+        view.bringSubviewToFront(bottomToolView)
+        view.bringSubviewToFront(rotateBtn)
+        view.bringSubviewToFront(clipRatioColView)
     }
     
     override open func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
@@ -370,21 +373,23 @@ class ZLClipImageViewController: UIViewController {
     
     func setupUI() {
         view.backgroundColor = .black
-        
-        view.addSubview(scrollView)
-        scrollView.addSubview(containerView)
-        containerView.addSubview(imageView)
-        view.addSubview(overlayView)
-        
+
         view.addSubview(bottomToolView)
         bottomToolView.layer.addSublayer(bottomShadowLayer)
         bottomToolView.addSubview(bottomToolLineView)
         bottomToolView.addSubview(cancelBtn)
         bottomToolView.addSubview(revertBtn)
         bottomToolView.addSubview(doneBtn)
-        
+
         view.addSubview(rotateBtn)
         view.addSubview(clipRatioColView)
+        
+        view.addSubview(scrollView)
+        scrollView.addSubview(containerView)
+        containerView.addSubview(imageView)
+        view.addSubview(overlayView)
+        
+  
         
         if let animateImageView {
             view.addSubview(animateImageView)
@@ -417,7 +422,7 @@ class ZLClipImageViewController: UIViewController {
         insets.top += 20
         var rect = CGRect.zero
         rect.origin.x = 15
-        rect.origin.y = insets.top
+        rect.origin.y = insets.top + ZLClipImageViewController.bottomToolViewH
         rect.size.width = UIScreen.main.bounds.width - 15 * 2
         rect.size.height = UIScreen.main.bounds.height - insets.top - ZLClipImageViewController.bottomToolViewH - ZLClipImageViewController.clipRatioItemSize.height - 25
         return rect

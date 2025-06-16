@@ -136,10 +136,12 @@ open class ZLEditImageViewController: UIViewController {
         return view
     }()
     
-    open lazy var topShadowView: ZLPassThroughView = {
-        let shadowView = ZLPassThroughView()
-        shadowView.findResponderSticker = findResponderSticker(_:)
-        return shadowView
+   open lazy var topShadowView: ZLPassThroughView = {
+    let shadowView = ZLPassThroughView()
+    shadowView.findResponderSticker = findResponderSticker(_:)
+    shadowView.backgroundColor = .black
+    return shadowView
+    
     }()
     
     open lazy var topShadowLayer: CAGradientLayer = {
@@ -622,7 +624,7 @@ open class ZLEditImageViewController: UIViewController {
         mainScrollView.frame = view.bounds
         resetContainerViewFrame()
         
-        topShadowView.frame = CGRect(x: 0, y: 0, width: view.zl.width, height: 150)
+        topShadowView.frame = CGRect(x: 0, y: 0, width: view.zl.width, height: 115)
         topShadowLayer.frame = topShadowView.bounds
         
         bottomShadowView.frame = CGRect(x: 0, y: view.zl.height - 150 - insets.bottom, width: view.zl.width, height: 150 + insets.bottom)
@@ -818,7 +820,7 @@ open class ZLEditImageViewController: UIViewController {
         containerView.addSubview(stickersContainer)
         
         view.addSubview(topShadowView)
-        topShadowView.layer.addSublayer(topShadowLayer)
+        // topShadowView.layer.addSublayer(topShadowLayer)
         topShadowView.addSubview(doneBtn)
         // topShadowView.addSubview(doneBtn)
         topShadowView.addSubview(cancelBtn)
