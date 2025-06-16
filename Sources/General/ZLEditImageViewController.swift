@@ -642,20 +642,14 @@ open class ZLEditImageViewController: UIViewController {
         doneBtn.frame = CGRect(x: view.zl.width - 15 - doneBtnW, y: insets.top, width: doneBtnW, height: 30)
         // redoBtn.frame = CGRect(x: view.zl.width - 15 - 30, y: insets.top, width: 30, height: 30)
         // undoBtn.frame = CGRect(x: redoBtn.zl.left - 15 - 30, y: insets.top, width: 30, height: 30)
-
-        let leftPaddingForTitle: CGFloat = -10  // Space after undoBtn
-        let rightPaddingForTitle: CGFloat = 10 // Space before 
         
         // X coordinate for the title's frame
-        let titleX = undoBtn.frame.maxX + leftPaddingForTitle
-
+        let titleX = view.zl.width / 2
         // Calculate available width for the title
-        let availableWidthForTitle = doneBtn.frame.minX - rightPaddingForTitle - titleX
-
-        // Ensure the width is not negative (can happen if buttons are too wide or padding too large)
+        let availableWidthForTitle = doneBtn.frame.minX - titleX
         let titleWidth = max(0, availableWidthForTitle)
 
-        screenTitle.frame = CGRect(x: titleX, y: insets.top, width: titleWidth, height: 30 )
+        screenTitle.frame = CGRect(x: titleX - availableWidthForTitle / 2, y: insets.top, width: titleWidth, height: 30 )
         // eraserBtn.frame = CGRect(x: 20, y: 30 + (drawColViewH - 36) / 2, width: 36, height: 36)
         // eraserBtnBgBlurView.frame = eraserBtn.frame
         // eraserLineView.frame = CGRect(x: eraserBtn.zl.right + 11, y: eraserBtn.frame.midY - 10, width: 1, height: 20)
