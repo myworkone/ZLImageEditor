@@ -1040,13 +1040,6 @@ open class ZLEditImageViewController: UIViewController {
     }
     
     @objc func fabBtnClick() {
-        // Animate the FAB button out, and in the completion block,
-        // execute the original dismiss logic.
-        animateFabButtonOut {
-            self.dismiss(animated: self.animateDismiss) {
-                self.cancelBlock?()
-            }
-        }
     }
 
     @objc func cancelBtnClick() {
