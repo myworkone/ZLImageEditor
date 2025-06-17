@@ -99,6 +99,8 @@ public class ZLEditImageModel: NSObject {
 
 open class ZLEditImageViewController: UIViewController {
     static let maxDrawLineImageWidth: CGFloat = 600
+
+    static let textStickerPadding = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 10)
     
     static let shadowColorFrom = UIColor.black.withAlphaComponent(0.35).cgColor
     
@@ -179,7 +181,7 @@ open class ZLEditImageViewController: UIViewController {
         let btn = UIButton(type: .custom)
         
         // 2. Set the background color and shape
-        btn.backgroundColor = UIColor(red: 255/255, green: 193/255, blue: 7/255, alpha: 1.0) // Yellow color
+        btn.backgroundColor = UIColor(red: 242/255, green: 242/255, blue: 242/255, alpha: 1.0)
         let buttonHeight = ZLImageEditorLayout.bottomToolBtnH
         btn.layer.cornerRadius = buttonHeight / 2
         btn.layer.masksToBounds = true
@@ -197,7 +199,7 @@ open class ZLEditImageViewController: UIViewController {
         let dotSize: CGFloat = 8
         for _ in 0..<3 {
             let dot = UIView()
-            dot.backgroundColor = .white
+            dot.backgroundColor = UIColor(red: 189/255, green: 189/255, blue: 189/255, alpha: 1.0)
             dot.translatesAutoresizingMaskIntoConstraints = false
             // Set a fixed size for the dots
             dot.widthAnchor.constraint(equalToConstant: dotSize).isActive = true
@@ -434,6 +436,10 @@ open class ZLEditImageViewController: UIViewController {
     private var defaultDrawPathWidth: CGFloat = 0
     
     private var impactFeedback: UIImpactFeedbackGenerator?
+
+    private var editingTextView: UITextView?
+
+    private var editingTextSticker: ZLTextStickerView?
     
     private lazy var panGes: UIPanGestureRecognizer = {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(drawAction(_:)))
@@ -479,6 +485,12 @@ open class ZLEditImageViewController: UIViewController {
     deinit {
         cleanToolViewStateTimer()
         zl_debugPrint("ZLEditImageViewController deinit")
+    }
+
+    @objc private func keyboardDidShow(_ notification: Notification) {
+      // When the keyboard appears, the system might adjust the text view's contentOffset.
+      // We force it back to zero to prevent any vertical shift of the text.
+      editingTextView?.contentOffset = .zero
     }
     
     @objc public class func showEditImageVC(
@@ -579,6 +591,8 @@ open class ZLEditImageViewController: UIViewController {
     
     override open func viewDidLoad() {
         super.viewDidLoad()
+
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow), name: UIResponder.keyboardDidShowNotification, object: nil)
         
         setupUI()
         
@@ -1169,23 +1183,41 @@ open class ZLEditImageViewController: UIViewController {
         setFilterViews(hidden: true)
         setAdjustViews(hidden: true)
     }
+
+func textStickerBtnClick() {
+    let defaultText = "Text" // The default text to display.
     
-    func textStickerBtnClick() {
-        if let fontChooserContainerView = ZLImageEditorConfiguration.default().fontChooserContainerView {
-            fontChooserContainerView.show(in: view)
-            setToolView(show: false)
-            fontChooserContainerIsHidden = false
-        } else {
-            showInputTextVC(font: ZLImageEditorConfiguration.default().textStickerDefaultFont) { [weak self] text, textColor, font, image, style in
-                self?.addTextStickersView(text, textColor: textColor, font: font, image: image, style: style)
-            }
-        }
-        
-        selectedTool = nil
-        setDrawViews(hidden: true)
-        setFilterViews(hidden: true)
-        setAdjustViews(hidden: true)
+    let defaultTextColor = ZLImageEditorConfiguration.default().textStickerDefaultTextColor
+    
+    let defaultFont = ZLImageEditorConfiguration.default().textStickerDefaultFont ?? UIFont.boldSystemFont(ofSize: ZLTextStickerView.fontSize)
+    
+    let defaultStyle: ZLInputTextStyle = .normal
+
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: defaultFont,
+        .foregroundColor: defaultTextColor
+    ]
+    let attributedText = NSAttributedString(string: defaultText, attributes: attributes)
+    
+    let textSize = attributedText.boundingRect(with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil).size
+    
+    let padding = ZLEditImageViewController.textStickerPadding
+    let imageSize = CGSize(width: textSize.width + padding.left + padding.right, height: textSize.height + padding.top + padding.bottom)
+    
+    let image = UIGraphicsImageRenderer.zl.renderImage(size: imageSize) { _ in
+        let drawPoint = CGPoint(x: padding.left, y: padding.top)
+        attributedText.draw(at: drawPoint)
     }
+
+    // 3. Add the new sticker to the canvas using the existing helper function.
+    addTextStickersView(defaultText, textColor: defaultTextColor, font: defaultFont, image: image, style: defaultStyle)
+    
+    // 4. Clean up UI state, as done by other tool buttons.
+    selectedTool = nil
+    setDrawViews(hidden: true)
+    setFilterViews(hidden: true)
+    setAdjustViews(hidden: true)
+}
     
     func mosaicBtnClick() {
         let isSelected = selectedTool != .mosaic
@@ -1339,6 +1371,11 @@ open class ZLEditImageViewController: UIViewController {
     }
     
   @objc func tapAction(_ tap: UITapGestureRecognizer) {
+       // If we are editing text, a tap outside should end the editing session.
+        if let textView = editingTextView, !textView.frame.contains(tap.location(in: self.view)) {
+            endTextStickerEditing()
+            return
+        }
         let p = tap.location(in: view)
         var tappedOnSticker = false
         
@@ -1699,7 +1736,8 @@ func addShapeStickerView(shapeType: ZLShapeType) {
     editorManager.storeAction(.sticker(oldState: nil, newState: shapeSticker.state))
 }
     /// Shows the color picker UI specifically for a selected shape.
-    private func showShapeColorPicker() {
+// Renamed from showShapeColorPicker
+    private func showStickerColorPicker() {
         // Hide other tool views to avoid UI clutter.
         setFilterViews(hidden: true)
         setAdjustViews(hidden: true)
@@ -1714,8 +1752,16 @@ func addShapeStickerView(shapeType: ZLShapeType) {
         drawColorCollectionView?.frame = CGRect(x: 20, y: 15, width: view.zl.width - 40, height: drawColViewH)
         
         drawColorCollectionView?.reloadData()
-        // Scroll to the currently selected color.
-        if let color = selectedShapeSticker?.shapeColor, let index = drawColors.firstIndex(of: color) {
+        
+        // THIS IS THE NEW LOGIC: Scroll to the correct color for text OR shapes.
+        var initialColor: UIColor?
+        if let textView = editingTextView {
+            initialColor = textView.textColor
+        } else if let shapeSticker = selectedShapeSticker {
+            initialColor = shapeSticker.shapeColor
+        }
+        
+        if let color = initialColor, let index = drawColors.firstIndex(of: color) {
             let indexPath = IndexPath(item: index, section: 0)
             drawColorCollectionView?.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
         }
@@ -2092,13 +2138,14 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
                 return cell
             } else if collectionView == drawColorCollectionView {
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ZLDrawColorCell.zl.identifier, for: indexPath) as! ZLDrawColorCell
-                
+    
                 let color = drawColors[indexPath.row]
                 cell.color = color
                 
                 var isSelected = false
-                // Check if we are coloring a shape OR using the draw tool.
-                if let shapeSticker = selectedShapeSticker {
+                if let textView = editingTextView {
+                    isSelected = (color == textView.textColor)
+                } else if let shapeSticker = selectedShapeSticker {
                     isSelected = (color == shapeSticker.shapeColor)
                 } else {
                     isSelected = (color == currentDrawColor && !eraserBtn.isSelected)
@@ -2166,6 +2213,15 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
               }
           } else if collectionView == drawColorCollectionView {
               let selectedColor = drawColors[indexPath.row]
+
+              if let textView = self.editingTextView {
+              textView.textColor = selectedColor
+              self.editingTextSticker?.textColor = selectedColor
+              
+              // THIS IS THE FIX: Reload the collection view to update the highlight.
+              collectionView.reloadData()
+              return
+              }
               
               // If a shape sticker is currently selected...
               if let shapeSticker = self.selectedShapeSticker {
@@ -2295,7 +2351,7 @@ extension ZLEditImageViewController: ZLStickerViewDelegate {
                 deselectShapeSticker()
                 // Now, select the new one and show its color picker.
                 self.selectedShapeSticker = shapeSticker
-                showShapeColorPicker()
+                showStickerColorPicker()
             }
         } else {
             // If the tapped sticker is NOT a shape (e.g., text or image),
@@ -2304,26 +2360,13 @@ extension ZLEditImageViewController: ZLStickerViewDelegate {
         }
     }
     
-    func sticker(_ textSticker: ZLTextStickerView, editText text: String) {
-        showInputTextVC(text, textColor: textSticker.textColor, font: textSticker.font, style: textSticker.style) { text, textColor, font, image, style in
-            guard let image = image, !text.isEmpty else {
-                textSticker.moveToAshbin()
-                return
-            }
-            
-            textSticker.startTimer()
-            guard textSticker.text != text || textSticker.textColor != textColor || textSticker.style != style || textSticker.font != font else {
-                return
-            }
-            textSticker.text = text
-            textSticker.textColor = textColor
-            textSticker.style = style
-            textSticker.image = image
-            textSticker.font = font
-            let newSize = ZLTextStickerView.calculateSize(image: image)
-            textSticker.changeSize(to: newSize)
-        }
-    }
+    // In the ZLEditImageViewController: ZLStickerViewDelegate extension
+
+func sticker(_ textSticker: ZLTextStickerView, editText text: String) {
+    // This is the new entry point for editing text.
+    // Instead of showing a new VC, we begin in-place editing.
+    beginTextStickerEditing(sticker: textSticker)
+}
 }
 
 // MARK: unod & redo
@@ -2479,6 +2522,146 @@ extension ZLEditImageViewController: ZLEditorManagerDelegate {
         adjustCollectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
         adjustCollectionView.reloadData()
     }
+
+    private func beginTextStickerEditing(sticker: ZLTextStickerView) {
+        // End any previous editing session.
+        endTextStickerEditing()
+        
+        sticker.isHidden = true
+        self.editingTextSticker = sticker
+        
+        // Create and configure the text view.
+        let textView = UITextView()
+        textView.text = sticker.text
+        textView.font = sticker.font
+        textView.textColor = sticker.textColor
+        textView.backgroundColor = .clear
+        textView.tintColor = .zl.editDoneBtnTitleColor
+        textView.delegate = self
+        textView.textAlignment = .center
+        
+        // --- THIS IS THE DEFINITIVE FIX ---
+        
+        // 1. Set the precise insets that the final text view will use.
+        textView.textContainerInset = ZLEditImageViewController.textStickerPadding
+        textView.textContainer.lineFragmentPadding = 0
+        
+        // 2. Calculate the exact size the text view needs to be to hold the text with those insets.
+        //    We give it the sticker's width as a constraint.
+        let fixedWidth = sticker.bounds.width
+        let newSize = textView.sizeThatFits(CGSize(width: fixedWidth, height: CGFloat.greatestFiniteMagnitude))
+        
+        // 3. Set the text view's bounds to this perfectly calculated size.
+        //    Now, the frame height matches the content height, so there is no space for vertical centering.
+        textView.bounds.size = newSize
+        
+        // 4. Set the center and transform to match the sticker. This will now be a perfect overlay.
+        textView.center = self.view.convert(sticker.center, from: sticker.superview)
+        textView.transform = sticker.transform
+        
+        // --- End of Fix ---
+        
+        self.view.addSubview(textView)
+        self.editingTextView = textView
+        
+        // Make it active.
+        textView.becomeFirstResponder()
+        
+        // Show the color picker.
+        showStickerColorPicker()
+    }
+
+    private func endTextStickerEditing() {
+        // Ensure we have a sticker and text view to process.
+        guard let sticker = editingTextSticker, let textView = editingTextView else {
+            return
+        }
+        
+        sticker.resignFirstResponder()
+        textView.resignFirstResponder()
+        
+        let newText = textView.text ?? ""
+        
+        // If the text is empty, remove the sticker. Otherwise, update it.
+        if newText.isEmpty {
+            sticker.moveToAshbin()
+        } else {
+            // And replace its contents with this:
+
+              guard let newImage = self.renderStickerText(
+                  text: newText,
+                  font: textView.font!,
+                  textColor: textView.textColor!,
+                  style: sticker.style
+              ) else {
+                  // If image rendering fails, cancel the edit and hide the text view.
+                  textView.removeFromSuperview()
+                  self.editingTextView = nil
+                  self.editingTextSticker = nil
+                  sticker.isHidden = false
+                  return
+              }
+
+              sticker.text = newText
+              sticker.textColor = textView.textColor ?? .white
+              sticker.image = newImage // Use the unwrapped newImage
+              // Recalculate size based on the new image.
+              let newSize = ZLTextStickerView.calculateSize(image: newImage) // Use the unwrapped newImage
+              sticker.changeSize(to: newSize)
+              sticker.isHidden = false
+        }
+        
+        // Clean up the editing UI.
+        textView.removeFromSuperview()
+        self.editingTextView = nil
+        self.editingTextSticker = nil
+        
+        // Hide the color picker.
+        setDrawViews(hidden: true)
+    }
+
+    private func renderStickerText(text: String, font: UIFont, textColor: UIColor, style: ZLInputTextStyle) -> UIImage? {
+        // Determine the final text color based on the style.
+        // For .bg style, the text color is inverted or set to white for contrast.
+        var finalTextColor = textColor
+        if style == .bg {
+            if textColor == .white {
+                finalTextColor = .black
+            } else if textColor == .black {
+                finalTextColor = .white
+            } else {
+                finalTextColor = .white
+            }
+        }
+        
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: finalTextColor
+        ]
+        let attributedText = NSAttributedString(string: text, attributes: attributes)
+        
+        // Calculate the required image size, including padding.
+        let textSize = attributedText.boundingRect(with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil).size
+        let padding = ZLEditImageViewController.textStickerPadding
+        let imageSize = CGSize(width: textSize.width + padding.left + padding.right, height: textSize.height + padding.top + padding.bottom)
+        
+        // Render the final image.
+        let renderer = UIGraphicsImageRenderer(size: imageSize)
+        let image = renderer.image { _ in
+            // If the style has a background, draw it first.
+            if style == .bg {
+                let path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: imageSize), cornerRadius: 10)
+                textColor.setFill() // The background color is the user's selected color.
+                path.fill()
+            }
+            
+            // Draw the text on top.
+            let drawPoint = CGPoint(x: padding.left, y: padding.top)
+            attributedText.draw(at: drawPoint)
+        }
+        
+        return image
+    }
 }
 
 // MARK: 手势可透传的自定义view
@@ -2505,5 +2688,31 @@ public class ZLPassThroughView: UIView {
         }
         
         return super.hitTest(point, with: event)
+    }
+}
+
+extension ZLEditImageViewController: UITextViewDelegate {
+    public func textViewDidChange(_ textView: UITextView) {
+        guard textView == editingTextView else { return }
+        
+        // Store original state.
+        let originalTransform = textView.transform
+        let oldCenter = textView.center
+        textView.transform = .identity
+        
+        // Define the maximum allowable width.
+        let maxWidth = self.view.bounds.width - 40
+        
+        // Calculate the ideal size the text wants to be.
+        let idealSize = textView.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        let newWidth = min(idealSize.width, maxWidth)
+        
+        // Calculate the final, correctly wrapped size.
+        let newSize = textView.sizeThatFits(CGSize(width: newWidth, height: CGFloat.greatestFiniteMagnitude))
+
+        // Apply the new, perfect size and restore position and rotation.
+        textView.bounds.size = newSize
+        textView.center = oldCenter
+        textView.transform = originalTransform
     }
 }

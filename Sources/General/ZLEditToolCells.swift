@@ -40,12 +40,11 @@ class ZLEditToolCell: UICollectionViewCell {
                 icon.image = .zl.getImage("zl_imageSticker")
                 icon.highlightedImage = .zl.getImage("zl_imageSticker")
             case .shapeSticker:
-                // todo: chnage icon 
                 icon.image = .zl.getImage("zl_imageSticker")
-                icon.highlightedImage = .zl.getImage("zl_imageSticker")
+                icon.highlightedImage = .zl.getImage("zl_shapeSticker_selected")
             case .textSticker:
                 icon.image = .zl.getImage("zl_textSticker")
-                icon.highlightedImage = .zl.getImage("zl_textSticker")
+                icon.highlightedImage = .zl.getImage("zl_textSticker_selected")
             case .mosaic:
                 icon.image = .zl.getImage("zl_mosaic")
                 icon.highlightedImage = .zl.getImage("zl_mosaic_selected")
