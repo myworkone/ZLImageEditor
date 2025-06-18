@@ -379,6 +379,7 @@ open class ZLEditImageViewController: UIViewController {
             // When tool changes, deselect any shape sticker
             if oldValue != selectedTool {
                 deselectShapeSticker()
+                deselectTextSticker()
             }
         }
     }
@@ -418,6 +419,8 @@ open class ZLEditImageViewController: UIViewController {
     
     // Add property to track the selected shape sticker for color changing
     var selectedShapeSticker: ZLShapeStickerView?
+
+    var selectedTextSticker: ZLTextStickerView?
     
     private var currentClipStatus: ZLClipStatus
 
@@ -440,6 +443,10 @@ open class ZLEditImageViewController: UIViewController {
     private var editingTextView: UITextView?
 
     private var editingTextSticker: ZLTextStickerView?
+
+    private var initialTextViewCenter: CGPoint? 
+
+    private var originalContentOffset: CGPoint?
     
     private lazy var panGes: UIPanGestureRecognizer = {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(drawAction(_:)))
@@ -484,6 +491,7 @@ open class ZLEditImageViewController: UIViewController {
     
     deinit {
         cleanToolViewStateTimer()
+        NotificationCenter.default.removeObserver(self)
         zl_debugPrint("ZLEditImageViewController deinit")
     }
 
@@ -491,6 +499,67 @@ open class ZLEditImageViewController: UIViewController {
       // When the keyboard appears, the system might adjust the text view's contentOffset.
       // We force it back to zero to prevent any vertical shift of the text.
       editingTextView?.contentOffset = .zero
+    }
+
+    @objc private func keyboardWillShow(_ notify: Notification) {
+        // --- This first part handles the toolbar ---
+        guard let rect = notify.userInfo?[UIApplication.keyboardFrameEndUserInfoKey] as? CGRect,
+              let duration = notify.userInfo?[UIApplication.keyboardAnimationDurationUserInfoKey] as? TimeInterval else {
+            return
+        }
+
+        // This should only fire when we are editing text, which is what triggers the keyboard.
+        if editingTextView != nil {
+            let keyboardH = rect.height
+            let colorPickerToolbarHeight = self.drawColViewH
+            let toolViewY = view.zl.height - keyboardH - colorPickerToolbarHeight
+            let toolViewFrame = CGRect(x: 0, y: toolViewY, width: view.zl.width, height: colorPickerToolbarHeight)
+
+            UIView.animate(withDuration: duration) {
+                self.bottomShadowView.frame = toolViewFrame
+                self.bottomShadowView.alpha = 1
+            }
+        }
+        
+        // Ensure we are editing and have the necessary frames
+        guard let textView = self.editingTextView else { return }
+        let keyboardFrame = rect
+
+        // Convert the text view's frame to the main view's coordinate system
+        let textViewFrameInView = textView.superview!.convert(textView.frame, to: self.view)
+        
+        // The Y-coordinate of the bottom of the text view
+        let textViewBottomY = textViewFrameInView.maxY
+        
+        // The Y-coordinate for the top of the keyboard
+        let keyboardTopY = keyboardFrame.minY
+        
+        // Calculate how much the keyboard is covering the text view
+        let overlap = textViewBottomY - keyboardTopY
+        
+        if overlap > 0 {
+            // The text view is covered, so we need to scroll.
+            // Add some padding so the text isn't right against the toolbar.
+            let padding: CGFloat = 50
+            let scrollAmount = overlap + padding
+            
+            var newOffset = self.mainScrollView.contentOffset
+            newOffset.y += scrollAmount
+            
+            // Animate the scrolling to match the keyboard animation.
+            UIView.animate(withDuration: duration) {
+                self.mainScrollView.setContentOffset(newOffset, animated: false)
+            }
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notify: Notification) {
+        // The logic is now handled by endTextStickerEditing -> deselectTextSticker -> restoreMainToolBar
+        // We can leave the old implementation here, but it's cleaner to rely on the new flow.
+        // For now, let's just call restoreMainToolBar to be safe.
+        if editingTextView == nil {
+            restoreMainToolBar()
+        }
     }
     
     @objc public class func showEditImageVC(
@@ -592,6 +661,8 @@ open class ZLEditImageViewController: UIViewController {
     override open func viewDidLoad() {
         super.viewDidLoad()
 
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow), name: UIResponder.keyboardDidShowNotification, object: nil)
         
         setupUI()
@@ -640,8 +711,11 @@ open class ZLEditImageViewController: UIViewController {
         
         topShadowView.frame = CGRect(x: 0, y: 0, width: view.zl.width, height: 115)
         topShadowLayer.frame = topShadowView.bounds
+
+        if editingTextView == nil, selectedShapeSticker == nil {
+            bottomShadowView.frame = CGRect(x: 0, y: view.zl.height - 150 - insets.bottom, width: view.zl.width, height: 150 + insets.bottom)
+        }
         
-        bottomShadowView.frame = CGRect(x: 0, y: view.zl.height - 150 - insets.bottom, width: view.zl.width, height: 150 + insets.bottom)
         bottomShadowLayer.frame = bottomShadowView.bounds
 
         let cancelBtnW = localLanguageTextValue(.cancel)
@@ -1053,6 +1127,7 @@ open class ZLEditImageViewController: UIViewController {
     }
     
     func drawBtnClick() {
+        deselectTextSticker()
         deselectShapeSticker()
         let isSelected = selectedTool != .draw
         if isSelected {
@@ -1099,6 +1174,8 @@ open class ZLEditImageViewController: UIViewController {
     }
     
     func clipBtnClick() {
+        deselectShapeSticker()
+        deselectTextSticker()
         preClipStatus = currentClipStatus
         
         var currentEditImage = editImage
@@ -1384,6 +1461,7 @@ func textStickerBtnClick() {
         if !tappedOnSticker {
             // If the tap was on the background, deselect any active sticker.
             deselectShapeSticker()
+            deselectTextSticker()
             stickersContainer.subviews.forEach { ($0 as? ZLStickerViewAdditional)?.resetState() }
         }
         
@@ -1728,30 +1806,38 @@ func addShapeStickerView(shapeType: ZLShapeType) {
     
     editorManager.storeAction(.sticker(oldState: nil, newState: shapeSticker.state))
 }
-    /// Shows the color picker UI specifically for a selected shape.
-// Renamed from showShapeColorPicker
+
     private func showStickerColorPicker() {
-        // Hide other tool views to avoid UI clutter.
-        setFilterViews(hidden: true)
-        setAdjustViews(hidden: true)
+        // 1. Hide the main tool buttons
+        editToolCollectionView.isHidden = true
+        fabBtn.isHidden = true
         
-        // Show the color collection view, but hide the draw-specific tools (eraser).
-        eraserBtn.isHidden = true
-        eraserBtnBgBlurView.isHidden = true
-        eraserLineView.isHidden = true
+        // 2. Configure the color picker subview
         drawColorCollectionView?.isHidden = false
-        
-        // Make the color picker take up the full available width in the bottom bar.
-        drawColorCollectionView?.frame = CGRect(x: 20, y: 15, width: view.zl.width - 40, height: drawColViewH)
-        
+        drawColorCollectionView?.frame = CGRect(x: 20, y: 0, width: view.zl.width - 40, height: drawColViewH)
         drawColorCollectionView?.reloadData()
         
-        // THIS IS THE NEW LOGIC: Scroll to the correct color for text OR shapes.
+        // 3. Define the new, smaller frame for the toolbar
+        var insets = UIEdgeInsets.zero
+        if #available(iOS 11.0, *) {
+            insets = self.view.safeAreaInsets
+        }
+        let colorPickerToolbarHeight = self.drawColViewH + insets.bottom
+        let toolViewY = view.zl.height - colorPickerToolbarHeight
+        let toolViewFrame = CGRect(x: 0, y: toolViewY, width: view.zl.width, height: colorPickerToolbarHeight)
+
+        // 4. Animate the change
+        UIView.animate(withDuration: 0.25) {
+            self.bottomShadowView.frame = toolViewFrame
+            self.bottomShadowView.alpha = 1
+        }
+        
+        // Scroll to the correct color
         var initialColor: UIColor?
-        if let textView = editingTextView {
-            initialColor = textView.textColor
-        } else if let shapeSticker = selectedShapeSticker {
+        if let shapeSticker = selectedShapeSticker {
             initialColor = shapeSticker.shapeColor
+        } else if let textSticker = selectedTextSticker {
+            initialColor = textSticker.textColor
         }
         
         if let color = initialColor, let index = drawColors.firstIndex(of: color) {
@@ -1763,19 +1849,48 @@ func addShapeStickerView(shapeType: ZLShapeType) {
     // Deselect shape sticker and hide its specific UI
     private func deselectShapeSticker() {
         guard self.selectedShapeSticker != nil else { return }
-        
         self.selectedShapeSticker = nil
         
-        // If the main tool is 'Draw', revert to the full draw UI.
-        // Otherwise, hide the color picker completely.
-        if selectedTool == .draw {
-            setDrawViews(hidden: false)
-            // Restore original frame for the color collection view next to the eraser.
-            eraserLineView.frame = CGRect(x: eraserBtn.zl.right + 11, y: eraserBtn.frame.midY - 10, width: 1, height: 20)
-            drawColorCollectionView?.frame = CGRect(x: eraserLineView.zl.right + 11, y: 15, width: view.zl.width - eraserLineView.zl.right - 31, height: drawColViewH)
-            drawColorCollectionView?.reloadData()
-        } else {
-            setDrawViews(hidden: true)
+        // If we are not currently editing with the keyboard, restore the main bar.
+        if editingTextView == nil {
+            restoreMainToolBar()
+        }
+    }
+
+    private func deselectTextSticker() {
+        guard self.selectedTextSticker != nil else { return }
+        self.selectedTextSticker = nil
+        
+        // If we are not currently editing with the keyboard, restore the main bar.
+        if editingTextView == nil {
+            restoreMainToolBar()
+        }
+    }
+
+    private func restoreMainToolBar(animated: Bool = true) {
+        var insets = UIEdgeInsets.zero
+        if #available(iOS 11.0, *) {
+            insets = self.view.safeAreaInsets
+        }
+        
+        // Calculate the original, full-size frame for the bottom toolbar.
+        let originalHeight: CGFloat = 150 + insets.bottom
+        let originalY = view.zl.height - originalHeight
+        let originalFrame = CGRect(x: 0, y: originalY, width: view.zl.width, height: originalHeight)
+
+        // Show the correct subviews
+        self.editToolCollectionView.isHidden = false
+        self.fabBtn.isHidden = false
+        // Hide the sticker-specific tools
+        self.setDrawViews(hidden: true)
+        self.setFilterViews(hidden: true)
+        self.setAdjustViews(hidden: true)
+        
+        let duration = animated ? 0.25 : 0
+        UIView.animate(withDuration: duration) {
+            // Animate the toolbar back to its original full size and position.
+            self.bottomShadowView.frame = originalFrame
+            self.bottomShadowView.alpha = 1 // Ensure it's visible
         }
     }
     
@@ -2077,11 +2192,23 @@ extension ZLEditImageViewController: UIScrollViewDelegate {
         isScrolling = false
     }
     
-    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard scrollView == mainScrollView else {
             return
         }
         isScrolling = true
+        
+        // MARK: - CHANGE: Update the text view's position as the scroll view moves
+        if let textView = editingTextView,
+          let initialCenter = initialTextViewCenter,
+          let originalOffset = originalContentOffset {
+            
+            // Calculate how much the scroll view has moved from its original position
+            let deltaY = scrollView.contentOffset.y - originalOffset.y
+            
+            // Apply this delta to the text view's initial center point
+            textView.center = CGPoint(x: initialCenter.x, y: initialCenter.y - deltaY)
+        }
     }
     
     public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
@@ -2140,7 +2267,9 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
                     isSelected = (color == textView.textColor)
                 } else if let shapeSticker = selectedShapeSticker {
                     isSelected = (color == shapeSticker.shapeColor)
-                } else {
+                } else if let textSticker = selectedTextSticker {
+                    isSelected = (color == textSticker.textColor)
+        }        else {
                     isSelected = (color == currentDrawColor && !eraserBtn.isSelected)
                 }
                 
@@ -2193,6 +2322,7 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
        
           if collectionView == editToolCollectionView {
               deselectShapeSticker()
+              deselectTextSticker()
               let toolType = tools[indexPath.row]
               switch toolType {
               case .draw: drawBtnClick()
@@ -2226,6 +2356,29 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
                   let newState = shapeSticker.state
                   // Save the action.
                   editorManager.storeAction(.sticker(oldState: oldState, newState: newState))
+              } else if let textSticker = self.selectedTextSticker {
+                  let oldState = textSticker.state
+                  
+                  guard let font = textSticker.font else {
+                    // If there's no font, we can't render the image, so we exit.
+                    return
+                  }
+                  
+                  // Update color and re-render the sticker's image
+                  textSticker.textColor = selectedColor
+                  if let newImage = self.renderStickerText(
+                      text: textSticker.text,
+                      font: font,
+                      textColor: selectedColor,
+                      style: textSticker.style
+                  ) {
+                      textSticker.image = newImage
+                      let newSize = ZLTextStickerView.calculateSize(image: newImage)
+                      textSticker.changeSize(to: newSize)
+                  }
+                  
+                  let newState = textSticker.state
+                  editorManager.storeAction(.sticker(oldState: oldState, newState: newState))
               } else {
                   // Otherwise, the user is just changing the draw tool color.
                   currentDrawColor = selectedColor
@@ -2256,6 +2409,7 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
 extension ZLEditImageViewController: ZLStickerViewDelegate {
     func stickerBeginOperation(_ sticker: ZLBaseStickerView) {
         deselectShapeSticker()
+        deselectTextSticker()
         stickersContainer.bringSubviewToFront(sticker)
         preStickerState = sticker.state
         
@@ -2277,7 +2431,7 @@ extension ZLEditImageViewController: ZLStickerViewDelegate {
                 (view as? ZLStickerViewAdditional)?.gesIsEnabled = false
             }
         }
-        deselectShapeSticker()
+        // deselectShapeSticker()
     }
     
     func stickerOnOperation(_ sticker: ZLBaseStickerView, panGes: UIPanGestureRecognizer) {
@@ -2323,7 +2477,9 @@ extension ZLEditImageViewController: ZLStickerViewDelegate {
         }
     }
     
-     func stickerDidTap(_ sticker: ZLBaseStickerView) {
+// In ZLEditImageViewController: ZLStickerViewDelegate extension
+
+    func stickerDidTap(_ sticker: ZLBaseStickerView) {
         stickersContainer.bringSubviewToFront(sticker)
         
         // Reset the border state of all other stickers.
@@ -2335,21 +2491,39 @@ extension ZLEditImageViewController: ZLStickerViewDelegate {
         
         // If the tapped sticker is a shape...
         if let shapeSticker = sticker as? ZLShapeStickerView {
-            // If it's already selected, tapping it again will deselect it.
-            if self.selectedShapeSticker == shapeSticker {
-                deselectShapeSticker()
-                shapeSticker.startTimer() // Keep border visible for a moment
+            let wasAlreadySelected = (self.selectedShapeSticker == shapeSticker)
+            
+            // Deselect everything first. This call will restore the main UI.
+            deselectShapeSticker()
+            deselectTextSticker()
+            
+            if wasAlreadySelected {
+                // Tapped the same sticker again to deselect it.
+                shapeSticker.startTimer()
             } else {
-                // If another shape was selected, deselect it first.
-                deselectShapeSticker()
-                // Now, select the new one and show its color picker.
+                // Selected a new shape sticker.
                 self.selectedShapeSticker = shapeSticker
+                showStickerColorPicker() // This will hide the main tools and show the picker.
+            }
+        } else if let textSticker = sticker as? ZLTextStickerView {
+            let wasAlreadySelected = (self.selectedTextSticker == textSticker)
+            
+            // Deselect everything first.
+            deselectShapeSticker()
+            deselectTextSticker()
+            
+            if wasAlreadySelected {
+                // Tapped the same sticker again.
+                textSticker.startTimer()
+            } else {
+                // Selected a new text sticker.
+                self.selectedTextSticker = textSticker
                 showStickerColorPicker()
             }
         } else {
-            // If the tapped sticker is NOT a shape (e.g., text or image),
-            // make sure to deselect any active shape.
+            // Tapped an image sticker or something else. Deselect everything.
             deselectShapeSticker()
+            deselectTextSticker()
         }
     }
     
@@ -2519,6 +2693,8 @@ extension ZLEditImageViewController: ZLEditorManagerDelegate {
     private func beginTextStickerEditing(sticker: ZLTextStickerView) {
         // End any previous editing session.
         endTextStickerEditing()
+        deselectShapeSticker()
+        deselectTextSticker()
         
         sticker.isHidden = true
         self.editingTextSticker = sticker
@@ -2551,18 +2727,22 @@ extension ZLEditImageViewController: ZLEditorManagerDelegate {
         // 4. Set the center and transform to match the sticker. This will now be a perfect overlay.
         textView.center = self.view.convert(sticker.center, from: sticker.superview)
         textView.transform = sticker.transform
-        
-        // --- End of Fix ---
+
+        self.initialTextViewCenter = textView.center
         
         self.view.addSubview(textView)
         self.editingTextView = textView
+        self.originalContentOffset = self.mainScrollView.contentOffset
         
         // Make it active.
         textView.becomeFirstResponder()
         
         // Show the color picker.
         showStickerColorPicker()
+        
     }
+
+// In ZLEditImageViewController class
 
     private func endTextStickerEditing() {
         // Ensure we have a sticker and text view to process.
@@ -2570,47 +2750,60 @@ extension ZLEditImageViewController: ZLEditorManagerDelegate {
             return
         }
         
+        // Resign first responder to dismiss the keyboard.
         sticker.resignFirstResponder()
         textView.resignFirstResponder()
         
         let newText = textView.text ?? ""
         
-        // If the text is empty, remove the sticker. Otherwise, update it.
+        // If the text is empty, remove the sticker.
         if newText.isEmpty {
             sticker.moveToAshbin()
         } else {
-            // And replace its contents with this:
+            // Otherwise, update the sticker with the new text and image.
+            
+            // 1. Render the new image based on the final text content and style.
+            guard let newImage = self.renderStickerText(
+                text: newText,
+                font: textView.font!,
+                textColor: textView.textColor!,
+                style: sticker.style
+            ) else {
+                // If image rendering fails, clean up and reveal the original sticker.
+                textView.removeFromSuperview()
+                self.editingTextView = nil
+                self.editingTextSticker = nil
+                sticker.isHidden = false // Show the sticker in its last good state.
+                restoreMainToolBar()
+                return
+            }
 
-              guard let newImage = self.renderStickerText(
-                  text: newText,
-                  font: textView.font!,
-                  textColor: textView.textColor!,
-                  style: sticker.style
-              ) else {
-                  // If image rendering fails, cancel the edit and hide the text view.
-                  textView.removeFromSuperview()
-                  self.editingTextView = nil
-                  self.editingTextSticker = nil
-                  sticker.isHidden = false
-                  return
-              }
-
-              sticker.text = newText
-              sticker.textColor = textView.textColor ?? .white
-              sticker.image = newImage // Use the unwrapped newImage
-              // Recalculate size based on the new image.
-              let newSize = ZLTextStickerView.calculateSize(image: newImage) // Use the unwrapped newImage
-              sticker.changeSize(to: newSize)
-              sticker.isHidden = false
+            // 2. Update all of the sticker's properties.
+            sticker.text = newText
+            sticker.textColor = textView.textColor ?? .white
+            sticker.image = newImage
+            
+            // 3. Recalculate size based on the new image and apply it.
+            let newSize = ZLTextStickerView.calculateSize(image: newImage)
+            sticker.changeSize(to: newSize)
+            
+            // MARK: - FIX: Make the sticker visible ONLY after all properties are updated.
+            sticker.isHidden = false
         }
         
-        // Clean up the editing UI.
+        // Clean up the temporary editing UI.
         textView.removeFromSuperview()
         self.editingTextView = nil
         self.editingTextSticker = nil
+        self.initialTextViewCenter = nil
         
-        // Hide the color picker.
-        setDrawViews(hidden: true)
+        // Restore the main toolbar.
+        restoreMainToolBar()
+
+        if let offset = self.originalContentOffset {
+            self.mainScrollView.setContentOffset(offset, animated: true)
+            self.originalContentOffset = nil // Clear the stored value
+        }
     }
 
     private func renderStickerText(text: String, font: UIFont, textColor: UIColor, style: ZLInputTextStyle) -> UIImage? {
