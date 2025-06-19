@@ -704,12 +704,12 @@ open class ZLEditImageViewController: UIViewController {
         if #available(iOS 11.0, *) {
             insets = self.view.safeAreaInsets
         }
-        insets.top = max(insets.top, 20)
+        insets.top = max(insets.top, 20) - 5
         
         mainScrollView.frame = view.bounds
         resetContainerViewFrame()
         
-        topShadowView.frame = CGRect(x: 0, y: 0, width: view.zl.width, height: 115)
+        topShadowView.frame = CGRect(x: 0, y: 0, width: view.zl.width, height: 100)
         topShadowLayer.frame = topShadowView.bounds
 
         if editingTextView == nil, selectedShapeSticker == nil {

@@ -49,6 +49,10 @@ class ZLClipImageViewController: UIViewController {
     var cancelClipAnimateFrame: CGRect = .zero
     
     var viewDidAppearCount = 0
+
+    let initialAngle: CGFloat
+
+    let initialEditRect: CGRect
     
     let originalImage: UIImage
     
@@ -139,9 +143,10 @@ class ZLClipImageViewController: UIViewController {
 
     open lazy var revertBtn: ZLEnlargeButton = {
         let btn = ZLEnlargeButton(type: .custom)
+        btn.setImage(.zl.getImage("zl_undo_disable"), for: .disabled)
         btn.setImage(.zl.getImage("zl_undo"), for: .normal)
         btn.adjustsImageWhenHighlighted = false
-        btn.isEnabled = true
+        btn.isEnabled = false
         btn.enlargeInset = 8
         btn.addTarget(self, action: #selector(revertBtnClick), for: .touchUpInside)
         return btn
@@ -250,6 +255,10 @@ class ZLClipImageViewController: UIViewController {
     init(image: UIImage, status: ZLClipStatus) {
         originalImage = image
         clipRatios = ZLImageEditorConfiguration.default().clipRatios
+
+        self.initialAngle = status.angle
+        self.initialEditRect = status.editRect
+
         self.editRect = status.editRect
         self.angle = status.angle
         if angle == -90 {
@@ -284,6 +293,8 @@ class ZLClipImageViewController: UIViewController {
         
         setupUI()
         generateThumbnailImage()
+
+        checkIsRevert()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -448,6 +459,38 @@ class ZLClipImageViewController: UIViewController {
         }
     }
     
+    func checkIsRevert() {
+        // We need to compare the initial editRect with the current one,
+        // but the current one is relative to the (potentially rotated) editImage.
+        // So, we must convert the current clip rect to be relative to the original image space.
+        
+        var currentRectInOriginalImage: CGRect
+        let angleInt = (Int(self.angle) % 360 + 360) % 360
+        let currentClipRect = self.convertClipRectToEditImageRect()
+        
+        // Reverse the rotation to map the rect back to the original image's coordinate space
+        switch angleInt {
+        case 90: // Rotated left once (-90)
+            currentRectInOriginalImage = CGRect(x: currentClipRect.minY, y: originalImage.size.height - currentClipRect.maxX, width: currentClipRect.height, height: currentClipRect.width)
+        case 180: // Rotated twice (-180)
+            currentRectInOriginalImage = CGRect(x: originalImage.size.width - currentClipRect.maxX, y: originalImage.size.height - currentClipRect.maxY, width: currentClipRect.width, height: currentClipRect.height)
+        case 270: // Rotated three times (-270)
+            currentRectInOriginalImage = CGRect(x: originalImage.size.width - currentClipRect.maxY, y: currentClipRect.minX, width: currentClipRect.height, height: currentClipRect.width)
+        default: // 0 degrees
+            currentRectInOriginalImage = currentClipRect
+        }
+
+        // A small tolerance for floating point comparisons.
+        let tolerance: CGFloat = 1e-6
+        
+        let angleChanged = abs(self.angle - self.initialAngle) > tolerance
+        let rectChanged = !currentRectInOriginalImage.equalTo(self.initialEditRect, tolerance: tolerance)
+
+        // The revert button is enabled if the angle OR the rect has changed.
+        self.revertBtn.isEnabled = angleChanged || rectChanged
+    }
+
+    
     func layoutInitialImage(animate: Bool) {
         scrollView.minimumZoomScale = 1
         scrollView.maximumZoomScale = 1
@@ -593,6 +636,7 @@ class ZLClipImageViewController: UIViewController {
         
         generateThumbnailImage()
         clipRatioColView.reloadData()
+        checkIsRevert()
     }
     
     @objc func doneBtnClick() {
@@ -641,6 +685,7 @@ class ZLClipImageViewController: UIViewController {
         
         generateThumbnailImage()
         clipRatioColView.reloadData()
+        checkIsRevert()
     }
     
     /// 图片旋转、还原、切换比例时，用来动画的view
@@ -684,6 +729,7 @@ class ZLClipImageViewController: UIViewController {
                 return
             }
             updateClipBoxFrame(point: point)
+            checkIsRevert()
         } else if pan.state == .cancelled || pan.state == .ended {
             panEdge = .none
             startTimer()
@@ -989,6 +1035,15 @@ class ZLClipImageViewController: UIViewController {
     }
 }
 
+extension CGRect {
+    func equalTo(_ other: CGRect, tolerance: CGFloat) -> Bool {
+        return abs(self.origin.x - other.origin.x) <= tolerance &&
+               abs(self.origin.y - other.origin.y) <= tolerance &&
+               abs(self.size.width - other.size.width) <= tolerance &&
+               abs(self.size.height - other.size.height) <= tolerance
+    }
+}
+
 extension ZLClipImageViewController: UIGestureRecognizerDelegate {
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard gestureRecognizer == gridPanGes else {
@@ -1043,6 +1098,7 @@ extension ZLClipImageViewController: UICollectionViewDataSource, UICollectionVie
         animateFakeImageView {
             self.fakeAnimateImageView.frame = toFrame
         }
+        checkIsRevert()
     }
 }
 
@@ -1062,6 +1118,7 @@ extension ZLClipImageViewController: UIScrollViewDelegate {
         if !scrollView.isDragging {
             startTimer()
         }
+        checkIsRevert()
     }
     
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
@@ -1076,6 +1133,7 @@ extension ZLClipImageViewController: UIScrollViewDelegate {
             return
         }
         startTimer()
+        checkIsRevert()
     }
     
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
@@ -1085,6 +1143,7 @@ extension ZLClipImageViewController: UIScrollViewDelegate {
         if !decelerate {
             startTimer()
         }
+        checkIsRevert()
     }
 }
 
