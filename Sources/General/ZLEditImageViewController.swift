@@ -1367,6 +1367,10 @@ func textStickerBtnClick() {
         animateFabButtonOut { [weak self] in
             guard let self = self else { return }
 
+            if self.editingTextView != nil {
+                self.endTextStickerEditing()
+            }
+
             // --- All of the original doneBtnClick logic now goes here ---
             
             var stickerStates: [ZLBaseStickertState] = []
