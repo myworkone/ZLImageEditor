@@ -2694,57 +2694,65 @@ extension ZLEditImageViewController: ZLEditorManagerDelegate {
         adjustCollectionView.reloadData()
     }
 
-    private func beginTextStickerEditing(sticker: ZLTextStickerView) {
-        // End any previous editing session.
-        endTextStickerEditing()
-        deselectShapeSticker()
-        deselectTextSticker()
-        
-        sticker.isHidden = true
-        self.editingTextSticker = sticker
-        
-        // Create and configure the text view.
-        let textView = UITextView()
-        textView.text = sticker.text
-        textView.font = sticker.font
-        textView.textColor = sticker.textColor
-        textView.backgroundColor = .clear
-        textView.tintColor = .zl.editDoneBtnTitleColor
-        textView.delegate = self
-        textView.textAlignment = .center
-        
-        // --- THIS IS THE DEFINITIVE FIX ---
-        
-        // 1. Set the precise insets that the final text view will use.
-        textView.textContainerInset = ZLEditImageViewController.textStickerPadding
-        textView.textContainer.lineFragmentPadding = 0
-        
-        // 2. Calculate the exact size the text view needs to be to hold the text with those insets.
-        //    We give it the sticker's width as a constraint.
-        let fixedWidth = sticker.bounds.width
-        let newSize = textView.sizeThatFits(CGSize(width: fixedWidth, height: CGFloat.greatestFiniteMagnitude))
-        
-        // 3. Set the text view's bounds to this perfectly calculated size.
-        //    Now, the frame height matches the content height, so there is no space for vertical centering.
-        textView.bounds.size = newSize
-        
-        // 4. Set the center and transform to match the sticker. This will now be a perfect overlay.
-        textView.center = self.view.convert(sticker.center, from: sticker.superview)
-        textView.transform = sticker.transform
+   private func beginTextStickerEditing(sticker: ZLTextStickerView) {
+    // End any previous editing session.
+    endTextStickerEditing()
+    deselectShapeSticker()
+    deselectTextSticker()
+    
+    sticker.isHidden = true
+    self.editingTextSticker = sticker
+    
+    // Create and configure the text view.
+    let textView = UITextView()
+    textView.text = sticker.text
+    textView.font = sticker.font
+    textView.textColor = sticker.textColor
+    textView.backgroundColor = .clear
+    textView.tintColor = .zl.editDoneBtnTitleColor
+    textView.delegate = self
+    textView.textAlignment = .center
+    
+    // 1. Set the precise insets that the final text view will use.
+    textView.textContainerInset = ZLEditImageViewController.textStickerPadding
+    textView.textContainer.lineFragmentPadding = 0
+    
+    // 2. Calculate the exact size the text view needs to be to hold the text with those insets.
+    //    We give it the sticker's width as a constraint.
+    let fixedWidth = sticker.bounds.width
+    let newSize = textView.sizeThatFits(CGSize(width: fixedWidth, height: CGFloat.greatestFiniteMagnitude))
+    
+    // 3. Set the text view's bounds to this perfectly calculated size.
+    //    Now, the frame height matches the content height, so there is no space for vertical centering.
+    textView.bounds.size = newSize
+    
+    // 4. Set the center and transform to match the sticker. This will now be a perfect overlay.
+    // Calculate the sticker's visual center point on the screen. This is more robust than converting `sticker.center`.
+    let centerInStickerBounds = CGPoint(x: sticker.bounds.midX, y: sticker.bounds.midY)
+    textView.center = sticker.convert(centerInStickerBounds, to: self.view)
+    
+    // The sticker's transform may include rotation (e.g. to counteract the container's rotation).
+    // The UITextView is in a non-rotated superview (`self.view`), so we must not apply the rotation part
+    // of the transform, only the scale, so the editing view is always upright.
+    let stickerTransform = sticker.transform
+    // Decompose the transform matrix to get scale values.
+    let scaleX = sqrt(stickerTransform.a * stickerTransform.a + stickerTransform.b * stickerTransform.b)
+    let scaleY = sqrt(stickerTransform.c * stickerTransform.c + stickerTransform.d * stickerTransform.d)
+    textView.transform = CGAffineTransform(scaleX: scaleX, y: scaleY)
 
-        self.initialTextViewCenter = textView.center
-        
-        self.view.addSubview(textView)
-        self.editingTextView = textView
-        self.originalContentOffset = self.mainScrollView.contentOffset
-        
-        // Make it active.
-        textView.becomeFirstResponder()
-        
-        // Show the color picker.
-        showStickerColorPicker()
-        
-    }
+    self.initialTextViewCenter = textView.center
+    
+    self.view.addSubview(textView)
+    self.editingTextView = textView
+    self.originalContentOffset = self.mainScrollView.contentOffset
+    
+    // Make it active.
+    textView.becomeFirstResponder()
+    
+    // Show the color picker.
+    showStickerColorPicker()
+    
+}
 
 // In ZLEditImageViewController class
 
